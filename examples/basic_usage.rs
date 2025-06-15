@@ -1,12 +1,15 @@
-use zip4j_rust::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod, ZipError};
+use zip2rs::{init, cleanup, ZipFile, ZipParameters, CompressionLevel, EncryptionMethod, ZipError};
 use std::fs;
 use std::io::Write;
 
 fn main() -> Result<(), ZipError> {
+    // Initialize the library
+    init()?;
+
     // Create some test files
     setup_test_files()?;
     
-    println!("=== Zip4j-Rust Basic Usage Example ===\n");
+    println!("=== zip2rs Basic Usage Example ===\n");
     
     // Example 1: Create a simple zip file
     println!("1. Creating a simple zip file...");
@@ -30,33 +33,36 @@ fn main() -> Result<(), ZipError> {
     
     // Cleanup
     cleanup_test_files();
-    
+
+    // Cleanup the library
+    cleanup()?;
+
     println!("\n=== All examples completed successfully! ===");
     Ok(())
 }
 
 fn setup_test_files() -> Result<(), ZipError> {
     // Create test directory
-    fs::create_dir_all("test_files").map_err(|e| ZipError::io_error(e.to_string()))?;
-    
+    fs::create_dir_all("test_files").map_err(|e| ZipError::IoError(e.to_string()))?;
+
     // Create some test files
     let mut file1 = fs::File::create("test_files/document.txt")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
     file1.write_all(b"This is a test document.\nIt contains some sample text.")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
-    
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
+
     let mut file2 = fs::File::create("test_files/data.csv")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
     file2.write_all(b"Name,Age,City\nJohn,30,New York\nJane,25,Los Angeles")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
-    
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
+
     // Create a subdirectory
-    fs::create_dir_all("test_files/subdir").map_err(|e| ZipError::io_error(e.to_string()))?;
+    fs::create_dir_all("test_files/subdir").map_err(|e| ZipError::IoError(e.to_string()))?;
     let mut file3 = fs::File::create("test_files/subdir/readme.md")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
-    file3.write_all(b"# Test Project\n\nThis is a test project for zip4j-rust.")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
-    
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
+    file3.write_all(b"# Test Project\n\nThis is a test project for zip2rs.")
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
+
     Ok(())
 }
 
@@ -79,9 +85,9 @@ fn create_encrypted_zip() -> Result<(), ZipError> {
     
     // Create parameters for maximum compression and AES-256 encryption
     let params = ZipParameters::new()
-        .compression_level(CompressionLevel::Maximum)
-        .encryption_method(EncryptionMethod::Aes256)
-        .password("secret123");
+        .with_compression_level(CompressionLevel::Maximum)
+        .with_encryption_method(EncryptionMethod::Aes256)
+        .with_password("secret123");
     
     // Add files with encryption
     zip.add_file_with_params("test_files/document.txt", &params)?;
@@ -94,21 +100,22 @@ fn create_encrypted_zip() -> Result<(), ZipError> {
 fn read_zip_contents() -> Result<(), ZipError> {
     let zip = ZipFile::new("simple_archive.zip")?;
     
-    println!("   Archive: {}", zip.path());
+    println!("   Archive: {}", zip.file_path()?);
     println!("   Valid: {}", zip.is_valid()?);
     println!("   Encrypted: {}", zip.is_encrypted()?);
     println!("   Entries: {}", zip.entry_count()?);
     println!();
     
     // List all entries
-    for (i, entry) in zip.entries()?.enumerate() {
+    for (i, entry_result) in zip.entries()?.enumerate() {
+        let entry = entry_result?;
         let name = entry.name()?;
         let size = entry.size()?;
         let compressed_size = entry.compressed_size()?;
         let is_dir = entry.is_directory()?;
         let is_encrypted = entry.is_encrypted()?;
         let compression_ratio = entry.compression_ratio()?;
-        
+
         println!("   Entry {}: {}", i + 1, name);
         println!("     Type: {}", if is_dir { "Directory" } else { "File" });
         println!("     Size: {} bytes", size);
@@ -126,7 +133,7 @@ fn extract_files() -> Result<(), ZipError> {
     let zip = ZipFile::new("simple_archive.zip")?;
     
     // Create extraction directory
-    fs::create_dir_all("extracted").map_err(|e| ZipError::io_error(e.to_string()))?;
+    fs::create_dir_all("extracted").map_err(|e| ZipError::IoError(e.to_string()))?;
     
     // Extract all files
     zip.extract_all("extracted")?;
@@ -150,9 +157,9 @@ fn modify_zip() -> Result<(), ZipError> {
     
     // Add a new file
     let mut new_file = fs::File::create("test_files/new_file.txt")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
     new_file.write_all(b"This is a newly added file.")
-        .map_err(|e| ZipError::io_error(e.to_string()))?;
+        .map_err(|e| ZipError::IoError(e.to_string()))?;
     drop(new_file);
     
     zip.add_file("test_files/new_file.txt")?;

@@ -1,4 +1,4 @@
-use zip4j_rust::{init, Result};
+use zip2rs::{init, Result};
 
 fn main() -> Result<()> {
     println!("Minimal test - attempting to initialize library...");
@@ -7,7 +7,7 @@ fn main() -> Result<()> {
         Ok(()) => {
             println!("✓ Library initialized successfully!");
             
-            match zip4j_rust::cleanup() {
+            match zip2rs::cleanup() {
                 Ok(()) => println!("✓ Library cleaned up successfully!"),
                 Err(e) => println!("✗ Cleanup failed: {}", e),
             }

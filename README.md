@@ -1,15 +1,19 @@
-# Zip4j-Rust
+# zip2rs
 
 A complete slop comprehensive Rust API for zip file operations that leverages the advanced capabilities of the [Zip4j](https://github.com/srikanth-lingala/zip4j) Java library through a GraalVM-generated native interface.
 
 ## Features
 
-- **ZipEntry-focused API**: Work with individual entries in zip archives with full metadata access
-- **Complete zip operations**: Create, read, modify, and extract zip files
-- **Advanced compression**: Multiple compression levels from none to maximum
-- **Strong encryption**: Support for standard ZIP encryption and AES-128/256
-- **Password protection**: Full support for password-protected archives
-- **Memory safety**: All operations are memory-safe with proper resource management
+- **Complete ZIP Operations**: Create, read, modify, and extract ZIP archives
+- **In-Memory Operations**: Extract files to memory and add data from byte arrays
+- **Advanced Encryption**: Support for Standard ZIP and AES encryption (128/256-bit)
+- **Flexible Compression**: Multiple compression levels and methods
+- **Streaming Support**: Handle large files efficiently
+- **Progress Monitoring**: Track long-running operations
+- **Split Archives**: Create and merge split ZIP files
+- **Comprehensive Metadata**: Access detailed entry information
+- **Iterator Support**: Iterate over entries with Rust iterators
+- **Safe API**: Memory-safe operations with comprehensive error handling
 - **Cross-platform**: Works on Windows, macOS, and Linux
 - **High performance**: Leverages the mature and optimized Zip4j library
 
@@ -18,58 +22,42 @@ A complete slop comprehensive Rust API for zip file operations that leverages th
 This project consists of two main components:
 
 1. **zip4j-abi**: A Java project that creates GraalVM Native Image bindings to Zip4j
-2. **zip4j-rust**: The Rust crate that provides safe, idiomatic bindings to the native library
+2. **zip2rs**: The Rust crate that provides safe, idiomatic bindings to the native library
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Rust Code     │───▶│  Native Library  │───▶│   Zip4j Java    │
-│  (zip4j-rust)   │    │   (zip4j-abi)    │    │    Library      │
+│    (zip2rs)     │    │   (zip4j-abi)    │    │    Library      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ## Quick Start
 
-### Prerequisites
-
-- Rust 1.70+ 
-- GraalVM with Native Image support
-- Java 24+
-
-### Building
-
-1. First, build the native library:
-```bash
-cd zip4j-abi
-./gradlew nativeCompile
-```
-
-2. Then build the Rust crate:
-```bash
-cargo build
-```
-
-### Basic Usage
-
 ```rust
-use zip4j_rust::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod};
+use zip2rs::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod, AesKeyStrength};
 
-// Create a new zip file
-let mut zip = ZipFile::new("archive.zip")?;
+// Initialize the library (call once at startup)
+zip2rs::init()?;
 
-// Add files with default settings
+// Create a new ZIP file
+let mut zip = ZipFile::new("example.zip")?;
+
+// Add a file with default settings
 zip.add_file("document.txt")?;
-zip.add_directory("my_folder")?;
 
-// Add files with custom compression and encryption
+// Add data from memory with custom parameters
+let data = b"Hello, World!";
 let params = ZipParameters::new()
-    .compression_level(CompressionLevel::Maximum)
-    .encryption_method(EncryptionMethod::Aes256)
-    .password("secret123");
+    .with_compression_level(CompressionLevel::Maximum)
+    .with_encryption_method(EncryptionMethod::Aes256)
+    .with_aes_key_strength(AesKeyStrength::Aes256)
+    .with_password("secret123");
 
-zip.add_file_with_params("sensitive.txt", &params)?;
+zip.add_data("greeting.txt", data, &params)?;
 
 // List all entries
-for entry in zip.entries()? {
+for entry_result in zip.entries()? {
+    let entry = entry_result?;
     println!("Entry: {} ({} bytes)", entry.name()?, entry.size()?);
     println!("  Compressed: {} bytes", entry.compressed_size()?);
     println!("  Directory: {}", entry.is_directory()?);
@@ -78,10 +66,13 @@ for entry in zip.entries()? {
 
 // Extract files
 zip.extract_all("output_directory")?;
-zip.extract_file("specific_file.txt", "output_directory")?;
+zip.extract_file("document.txt", "output_directory")?;
 
 // Remove files
-zip.remove_file("obsolete.txt")?;
+zip.remove_file("greeting.txt")?;
+
+// Cleanup when done
+zip2rs::cleanup()?;
 ```
 
 ## API Overview
@@ -97,15 +88,20 @@ zip.remove_file("obsolete.txt")?;
 
 ```rust
 // Creation and opening
-let zip = ZipFile::new("archive.zip")?;
-let zip = ZipFile::with_password("encrypted.zip", "password")?;
+let mut zip = ZipFile::new("archive.zip")?;
+let mut zip = ZipFile::with_password("encrypted.zip", "password")?;
 
 // Adding content
 zip.add_file("file.txt")?;
 zip.add_directory("folder")?;
 zip.add_file_with_params("file.txt", &params)?;
 
-// Removing content  
+// Add data from memory
+let data = b"File content";
+zip.add_data("memory_file.txt", data, &ZipParameters::new())?;
+zip.add_data("encrypted_file.txt", data, &params)?;
+
+// Removing content
 zip.remove_file("unwanted.txt")?;
 zip.remove_entry(&entry)?;
 
@@ -114,10 +110,16 @@ zip.extract_all("output")?;
 zip.extract_file("specific.txt", "output")?;
 zip.extract_entry(&entry, "output")?;
 
+// Extract to memory
+let entry = zip.get_entry_by_name("file.txt")?;
+let data = zip.extract_data(&entry)?;
+
 // Querying
 let count = zip.entry_count()?;
 let entry = zip.get_entry_by_name("file.txt")?;
 let entry = zip.get_entry_by_index(0)?;
+let is_encrypted = zip.is_encrypted()?;
+let is_valid = zip.is_valid()?;
 ```
 
 ### ZipEntry Metadata
@@ -137,18 +139,62 @@ let is_encrypted = entry.is_encrypted()?;
 // Advanced metadata
 let crc32 = entry.crc32()?;
 let modified_time = entry.last_modified_time()?;
+let compression_method = entry.compression_method()?;
+let encryption_method = entry.encryption_method()?;
 let compression_ratio = entry.compression_ratio()?;
+```
+
+### ZipParameters Configuration
+
+```rust
+use zip2rs::{ZipParameters, CompressionLevel, CompressionMethod, EncryptionMethod, AesKeyStrength};
+
+// Basic parameters
+let params = ZipParameters::new()
+    .with_compression_level(CompressionLevel::Maximum)
+    .with_compression_method(CompressionMethod::Deflate);
+
+// AES 256-bit encryption
+let aes_params = ZipParameters::new()
+    .with_aes256_encryption("password123");
+
+// AES 128-bit encryption
+let aes128_params = ZipParameters::new()
+    .with_aes128_encryption("password123");
+
+// Standard ZIP encryption
+let standard_params = ZipParameters::new()
+    .with_standard_encryption("password123");
+
+// Custom AES configuration
+let custom_params = ZipParameters::new()
+    .with_encryption_method(EncryptionMethod::Aes256)
+    .with_aes_key_strength(AesKeyStrength::Aes256)
+    .with_password("custom_password");
 ```
 
 ## Examples
 
 See the `examples/` directory for comprehensive usage examples:
 
-- `basic_usage.rs`: Complete example showing all major features
+- **`minimal_test.rs`**: Basic library initialization test
+- **`simple_test.rs`**: Simple functionality test with basic operations
+- **`basic_usage.rs`**: Complete example showing all major features
+- **`comprehensive_demo.rs`**: Full demonstration of all capabilities including encryption, compression, and memory operations
 
 Run examples with:
 ```bash
+# Test basic initialization
+cargo run --example minimal_test
+
+# Run simple functionality test
+cargo run --example simple_test
+
+# Complete usage example
 cargo run --example basic_usage
+
+# Full comprehensive demo
+cargo run --example comprehensive_demo
 ```
 
 ## Error Handling
@@ -156,15 +202,75 @@ cargo run --example basic_usage
 The crate uses a comprehensive error type that covers all possible failure modes:
 
 ```rust
-use zip4j_rust::ZipError;
+use zip2rs::{ZipError, Result};
 
 match zip.add_file("nonexistent.txt") {
     Ok(()) => println!("File added successfully"),
-    Err(ZipError::FileNotFound { path }) => println!("File not found: {}", path),
-    Err(ZipError::ZipException { message }) => println!("Zip error: {}", message),
-    Err(ZipError::IoError { message }) => println!("I/O error: {}", message),
+    Err(ZipError::FileNotFound) => println!("File not found"),
+    Err(ZipError::ZipException(msg)) => println!("Zip error: {}", msg),
+    Err(ZipError::IoError(msg)) => println!("I/O error: {}", msg),
+    Err(ZipError::InvalidParameter(msg)) => println!("Invalid parameter: {}", msg),
+    Err(ZipError::PermissionDenied) => println!("Permission denied"),
+    Err(ZipError::EntryNotFound) => println!("Entry not found in archive"),
     Err(e) => println!("Other error: {}", e),
 }
+```
+
+### Available Error Types
+
+- `InvalidHandle` - Invalid handle provided
+- `FileNotFound` - File not found
+- `ZipException(String)` - Zip-specific error with message
+- `IoError(String)` - I/O error with message
+- `InvalidParameter(String)` - Invalid parameter with details
+- `OutOfMemory` - Out of memory
+- `EntryNotFound` - Entry not found in archive
+- `BufferTooSmall` - Buffer too small for operation
+- `OperationCancelled` - Operation was cancelled
+- `UnsupportedOperation` - Unsupported operation
+- `PermissionDenied` - Permission denied
+- `DiskFull` - Disk full
+- `StringConversion(String)` - String conversion error
+
+## Available Types and Enums
+
+### Compression Levels
+- `CompressionLevel::None` - No compression
+- `CompressionLevel::Fastest` - Fastest compression (lowest ratio)
+- `CompressionLevel::Normal` - Balanced speed and compression
+- `CompressionLevel::Maximum` - Maximum compression (slowest)
+
+### Compression Methods
+- `CompressionMethod::Store` - Store without compression
+- `CompressionMethod::Deflate` - Standard deflate compression
+
+### Encryption Methods
+- `EncryptionMethod::None` - No encryption
+- `EncryptionMethod::Standard` - Standard ZIP encryption
+- `EncryptionMethod::Aes128` - AES 128-bit encryption
+- `EncryptionMethod::Aes256` - AES 256-bit encryption
+
+### AES Key Strengths
+- `AesKeyStrength::Aes128` - 128-bit key
+- `AesKeyStrength::Aes192` - 192-bit key
+- `AesKeyStrength::Aes256` - 256-bit key
+
+## Initialization and Cleanup
+
+**Important**: You must call `zip2rs::init()` once before using any other functions, and `zip2rs::cleanup()` when done:
+
+```rust
+use zip2rs::{init, cleanup, ZipFile};
+
+// Initialize at application startup
+init()?;
+
+// Use the library
+let mut zip = ZipFile::new("archive.zip")?;
+// ... perform operations ...
+
+// Cleanup at application shutdown
+cleanup()?;
 ```
 
 ## Performance

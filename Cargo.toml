@@ -1,10 +1,10 @@
 [package]
-name = "zip4j-rust"
+name = "zip2rs"
 version = "0.1.0"
 edition = "2021"
 description = "Rust bindings for Zip4j library through GraalVM Native Image"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/your-repo/zip4j-rust"
+repository = "https://github.com/Ran-Mewo/zip2rs"
 keywords = ["zip", "compression", "archive", "zip4j", "graalvm"]
 categories = ["compression", "filesystem"]
 
@@ -17,7 +17,7 @@ bindgen = "0.70"
 [dev-dependencies]
 
 [lib]
-name = "zip4j_rust"
+name = "zip2rs"
 crate-type = ["cdylib", "rlib"]
 
 # Cross-compilation support for all target platforms

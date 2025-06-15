@@ -22,10 +22,10 @@ impl ZipFile {
     /// # Examples
     /// 
     /// ```rust,no_run
-    /// use zip4j_rust::ZipFile;
+    /// use zip2rs::ZipFile;
     /// 
     /// let zip = ZipFile::new("archive.zip")?;
-    /// # Ok::<(), zip4j_rust::ZipError>(())
+    /// # Ok::<(), zip2rs::ZipError>(())
     /// ```
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         ffi::ensure_initialized()?;
@@ -59,10 +59,10 @@ impl ZipFile {
     /// # Examples
     /// 
     /// ```rust,no_run
-    /// use zip4j_rust::ZipFile;
+    /// use zip2rs::ZipFile;
     /// 
     /// let zip = ZipFile::with_password("archive.zip", "secret")?;
-    /// # Ok::<(), zip4j_rust::ZipError>(())
+    /// # Ok::<(), zip2rs::ZipError>(())
     /// ```
     pub fn with_password<P: AsRef<Path>, S: AsRef<str>>(path: P, password: S) -> Result<Self> {
         ffi::ensure_initialized()?;

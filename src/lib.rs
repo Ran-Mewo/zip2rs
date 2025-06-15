@@ -1,4 +1,4 @@
-//! # zip4j-rust
+//! # zip2rs
 //!
 //! A comprehensive Rust wrapper for the zip4j Java library using GraalVM Native Image.
 //!
@@ -21,10 +21,10 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use zip4j_rust::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod};
+//! use zip2rs::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod};
 //!
 //! // Initialize the library (call once at startup)
-//! zip4j_rust::init()?;
+//! zip2rs::init()?;
 //!
 //! // Create a new ZIP file
 //! let mut zip = ZipFile::new("example.zip")?;
@@ -54,13 +54,13 @@
 //!     println!("Entry: {} ({} bytes)", entry.name()?, entry.size()?);
 //! }
 //!
-//! # Ok::<(), zip4j_rust::ZipError>(())
+//! # Ok::<(), zip2rs::ZipError>(())
 //! ```
 //!
 //! ## Advanced Usage
 //!
 //! ```rust,no_run
-//! use zip4j_rust::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod, AesKeyStrength};
+//! use zip2rs::{ZipFile, ZipParameters, CompressionLevel, EncryptionMethod, AesKeyStrength};
 //!
 //! // Create an encrypted archive with custom settings
 //! let mut zip = ZipFile::with_password("secure.zip", "archive_password")?;
@@ -79,7 +79,7 @@
 //! println!("Archive is valid: {}", zip.is_valid()?);
 //! println!("Entry count: {}", zip.entry_count()?);
 //!
-//! # Ok::<(), zip4j_rust::ZipError>(())
+//! # Ok::<(), zip2rs::ZipError>(())
 //! ```
 
 pub mod error;
@@ -105,11 +105,11 @@ pub use zip_file::{ZipFile, ZipEntryIterator};
 /// 
 /// ```rust,no_run
 /// // Initialize at the start of your application
-/// zip4j_rust::init()?;
+/// zip2rs::init()?;
 /// 
 /// // Now you can use the library
-/// let zip = zip4j_rust::ZipFile::new("archive.zip")?;
-/// # Ok::<(), zip4j_rust::ZipError>(())
+/// let zip = zip2rs::ZipFile::new("archive.zip")?;
+/// # Ok::<(), zip2rs::ZipError>(())
 /// ```
 pub fn init() -> Result<()> {
     ffi::init()
@@ -125,8 +125,8 @@ pub fn init() -> Result<()> {
 /// 
 /// ```rust,no_run
 /// // At application shutdown
-/// zip4j_rust::cleanup()?;
-/// # Ok::<(), zip4j_rust::ZipError>(())
+/// zip2rs::cleanup()?;
+/// # Ok::<(), zip2rs::ZipError>(())
 /// ```
 pub fn cleanup() -> Result<()> {
     ffi::cleanup()

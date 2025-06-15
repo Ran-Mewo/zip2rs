@@ -1,5 +1,5 @@
 use std::fs;
-use zip4j_rust::{
+use zip2rs::{
     init, cleanup, ZipFile, ZipParameters, CompressionLevel, EncryptionMethod,
     Result, ZipError,
 };
@@ -144,7 +144,7 @@ fn demo_archive_inspection() -> Result<()> {
     
     // Set and get comment
     let mut zip_mut = ZipFile::new("commented_demo.zip")?;
-    zip_mut.set_comment("This is a demo archive created by zip4j-rust")?;
+    zip_mut.set_comment("This is a demo archive created by zip2rs")?;
     println!("  Comment: {}", zip_mut.comment()?);
     
     println!("\nEntry details:");

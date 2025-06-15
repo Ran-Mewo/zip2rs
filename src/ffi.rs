@@ -95,7 +95,7 @@ pub fn is_initialized() -> bool {
 /// Ensure the library is initialized, returning an error if not
 pub(crate) fn ensure_initialized() -> Result<()> {
     if !is_initialized() {
-        return Err(ZipError::Unknown("Library not initialized. Call zip4j_rust::init() first.".to_string()));
+        return Err(ZipError::Unknown("Library not initialized. Call zip2rs::init() first.".to_string()));
     }
     Ok(())
 }

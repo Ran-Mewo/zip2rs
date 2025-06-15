@@ -1,7 +1,7 @@
-use zip4j_rust::{init, cleanup, ZipFile, ZipParameters, CompressionLevel, Result};
+use zip2rs::{init, cleanup, ZipFile, ZipParameters, CompressionLevel, Result};
 
 fn main() -> Result<()> {
-    println!("Testing zip4j-rust implementation...");
+    println!("Testing zip2rs implementation...");
     
     // Initialize the library
     init()?;
@@ -62,7 +62,7 @@ fn test_basic_operations() -> Result<()> {
     println!("✓ Is valid after adding data: {}", is_valid_after);
 
     // Now set a comment (should work on a valid ZIP)
-    zip.set_comment("Test archive created by zip4j-rust")?;
+    zip.set_comment("Test archive created by zip2rs")?;
     let comment = zip.comment()?;
     println!("✓ Comment set successfully: '{}'", comment);
 
@@ -103,7 +103,7 @@ fn test_memory_operations() -> Result<()> {
         println!("✓ Data integrity verified");
     } else {
         println!("✗ Data integrity check failed!");
-        return Err(zip4j_rust::ZipError::Unknown("Data mismatch".to_string()));
+        return Err(zip2rs::ZipError::Unknown("Data mismatch".to_string()));
     }
     
     Ok(())
