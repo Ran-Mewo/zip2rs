@@ -138,18 +138,40 @@ jobs:
     - name: Copy artifacts (Unix)
       if: runner.os != 'Windows'
       run: |
-        find ./zip4j-abi -name "*.so" -o -name "*.dylib" -o -name "*.a" | while read file; do
-          cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
-        done
-        find ./zip4j-abi -name "*.h" | while read file; do
-          cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
+        # Copy and rename shared libraries with proper naming convention
+        if [[ "${{ matrix.target }}" == darwin-* ]]; then
+          # macOS: .dylib files
+          find ./zip4j-abi -name "*.dylib" | head -1 | while read file; do
+            cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/libzip4j-abi.dylib"
+          done
+        else
+          # Linux: .so files
+          find ./zip4j-abi -name "*.so" | head -1 | while read file; do
+            cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/libzip4j-abi.so"
+          done
+        fi
+        # Copy header files
+        find ./zip4j-abi -name "*.h" | head -1 | while read file; do
+          cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/zip4j-abi.h"
         done
 
     - name: Copy artifacts (Windows)
       if: runner.os == 'Windows'
       run: |
-        Get-ChildItem -Path "./zip4j-abi" -Recurse -Include "*.dll", "*.lib", "*.h" | ForEach-Object {
-          Copy-Item $_.FullName "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
+        # Copy and rename DLL with proper naming convention
+        $dll = Get-ChildItem -Path "./zip4j-abi" -Recurse -Include "*.dll" | Select-Object -First 1
+        if ($dll) {
+          Copy-Item $dll.FullName "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/zip4j-abi.dll"
+        }
+        # Copy and rename LIB with proper naming convention
+        $lib = Get-ChildItem -Path "./zip4j-abi" -Recurse -Include "*.lib" | Select-Object -First 1
+        if ($lib) {
+          Copy-Item $lib.FullName "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/zip4j-abi.lib"
+        }
+        # Copy header file
+        $header = Get-ChildItem -Path "./zip4j-abi" -Recurse -Include "*.h" | Select-Object -First 1
+        if ($header) {
+          Copy-Item $header.FullName "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/zip4j-abi.h"
         }
 
     - name: Upload artifacts
