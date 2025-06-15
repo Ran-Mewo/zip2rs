@@ -477,7 +477,7 @@ impl ZipFile {
                 ffi::get_thread(),
                 self.handle,
                 c_name.as_ptr() as *mut c_char,
-                data.as_ptr() as *mut i8,
+                data.as_ptr() as *mut c_char,
                 data.len() as c_int,
                 params.compression_level.into(),
                 params.compression_method.into(),
@@ -595,7 +595,7 @@ impl ZipFile {
                 ffi::get_thread(),
                 self.handle,
                 entry.handle(),
-                buffer.as_mut_ptr() as *mut i8,
+                buffer.as_mut_ptr() as *mut c_char,
                 buffer_size as c_int,
                 &mut data_length
             )
@@ -609,7 +609,7 @@ impl ZipFile {
                     ffi::get_thread(),
                     self.handle,
                     entry.handle(),
-                    buffer.as_mut_ptr() as *mut i8,
+                    buffer.as_mut_ptr() as *mut c_char,
                     buffer.len() as c_int,
                     &mut data_length
                 )
