@@ -27,19 +27,7 @@ graalvmNative {
                     '-O9'
             ])
 
-            // Add cross-compilation support for ARM64 targets
-            def cc = System.getenv('CC')
-            if (cc && cc.contains('aarch64-linux-gnu')) {
-                println "Configuring for cross-compilation with CC=${cc}"
-                // Find the full path to the compiler
-                def ccPath = ['/usr/bin/aarch64-linux-gnu-gcc', '/usr/local/bin/aarch64-linux-gnu-gcc']
-                    .find { new File(it).exists() } ?: cc
-                buildArgs.addAll([
-                    '--target=linux-aarch64',
-                    "--native-compiler-path=${ccPath}",
-                    '-H:-CheckToolchain'  // Disable toolchain checking for cross-compilation
-                ])
-            }
+
         }
         test {
             buildArgs.addAll([

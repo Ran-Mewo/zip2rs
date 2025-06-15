@@ -36,13 +36,13 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (musl)
+          # Linux ARM64 (musl) - using emulation
           - os: ubuntu-latest
             arch: aarch64
             target: linux-aarch64-musl
             graal_arch: aarch64
             use_musl: true
-            cross_compile: true
+            use_emulation: true
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
@@ -73,21 +73,16 @@ jobs:
         native-image-job-reports: 'true'
 
     - name: Install musl tools (Linux musl builds)
-      if: matrix.use_musl == true
+      if: matrix.use_musl == true && matrix.use_emulation != true
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
-        if [ "${{ matrix.cross_compile }}" = "true" ]; then
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          # Install musl for aarch64
-          sudo apt-get install -y musl-dev:arm64 || true
-        fi
 
-    - name: Set up cross-compilation (Linux ARM64)
-      if: matrix.target == 'linux-aarch64-musl'
-      run: |
-        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+    - name: Set up QEMU emulation (Linux ARM64)
+      if: matrix.use_emulation == true
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/arm64
 
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
@@ -116,13 +111,16 @@ jobs:
         ./gradlew clean nativeCompile
 
     - name: Build native library (Linux ARM64 musl)
-      if: matrix.target == 'linux-aarch64-musl'
-      working-directory: ./zip4j-abi
+      if: matrix.use_emulation == true
       run: |
-        echo "Building for Linux ARM64 musl with cross-compilation"
-        echo "CC=$CC"
-        echo "CXX=$CXX"
-        ./gradlew clean nativeCompile --info
+        docker run --rm --platform linux/arm64 \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/zip4j-abi \
+          ghcr.io/graalvm/graalvm-community:21-muslib \
+          sh -c "
+            apk add --no-cache musl-dev gcc libc-dev
+            ./gradlew clean nativeCompile
+          "
 
     - name: Build native library (Windows x86_64)
       if: matrix.os == 'windows-latest' && matrix.arch == 'x86_64'
