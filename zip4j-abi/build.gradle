@@ -26,6 +26,18 @@ graalvmNative {
                     '-march=compatibility',
                     '-O9'
             ])
+
+            // Add cross-compilation support for musl targets
+            def cc = System.getenv('CC')
+            if (cc && cc.contains('aarch64-linux-gnu')) {
+                println "Configuring for cross-compilation with CC=${cc}"
+                buildArgs.addAll([
+                    '--libc=musl',
+                    '--target=linux-aarch64',
+                    "-H:CCompilerPath=${cc}",
+                    "-H:CXXCompilerPath=${System.getenv('CXX') ?: cc.replace('gcc', 'g++')}"
+                ])
+            }
         }
         test {
             buildArgs.addAll([
