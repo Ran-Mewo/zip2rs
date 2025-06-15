@@ -1,0 +1,46 @@
+[package]
+name = "zip4j-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Rust bindings for Zip4j library through GraalVM Native Image"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-repo/zip4j-rust"
+keywords = ["zip", "compression", "archive", "zip4j", "graalvm"]
+categories = ["compression", "filesystem"]
+
+[dependencies]
+thiserror = "2.0"
+
+[build-dependencies]
+bindgen = "0.70"
+
+[dev-dependencies]
+
+[lib]
+name = "zip4j_rust"
+crate-type = ["cdylib", "rlib"]
+
+# Cross-compilation support for all target platforms
+[target.x86_64-pc-windows-msvc]
+linker = "link.exe"
+
+[target.aarch64-pc-windows-msvc]
+linker = "link.exe"
+
+[target.x86_64-apple-darwin]
+linker = "cc"
+
+[target.aarch64-apple-darwin]
+linker = "cc"
+
+[target.x86_64-unknown-linux-musl]
+linker = "x86_64-linux-musl-gcc"
+
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-musl-gcc"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "cc"
+
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"

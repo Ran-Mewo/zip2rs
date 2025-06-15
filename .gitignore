@@ -1,0 +1,173 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Java
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+hs_err_pid*
+replay_pid*
+
+# Gradle
+.gradle/
+build/
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+!*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Logs
+*.log
+*.args
+logs/
+reports/
+
+# Runtime test files
+test_*.zip
+extracted_*/
+test_basic.zip
+test_memory.zip
+memory_demo.zip
+encrypted_demo.zip
+commented_demo.zip
+advanced_demo.zip
+basic_demo.zip
+
+# Build artifacts (but keep nativeCompile!)
+lib/*.dll
+lib/*.so
+lib/*.dylib
+lib/*.lib
+lib/*.a
+
+# Archive files (but allow specific ones in nativeCompile)
+*.zip
+*.7z
+*.dmg
+*.gz
+*.iso
+*.rar
+*.tar
+*.tgz
+
+# Ignore root-level nativeCompile directory (if it exists)
+nativeCompile/
+
+# IMPORTANT: Do NOT ignore zip4j-abi build output - we need it for Rust!
+# The zip4j-abi/build/native/nativeCompile/<platform>/ folders contain prebuilt binaries
+!zip4j-abi/build/
+!zip4j-abi/build/native/
+!zip4j-abi/build/native/nativeCompile/
+!zip4j-abi/build/native/nativeCompile/*/
+!zip4j-abi/build/native/nativeCompile/**/*.dll
+!zip4j-abi/build/native/nativeCompile/**/*.so
+!zip4j-abi/build/native/nativeCompile/**/*.dylib
+!zip4j-abi/build/native/nativeCompile/**/*.lib
+!zip4j-abi/build/native/nativeCompile/**/*.a
+!zip4j-abi/build/native/nativeCompile/**/*.h
+
+# But ignore temporary build files in the build directory
+zip4j-abi/build/**/*.tmp
+zip4j-abi/build/**/*.log
+zip4j-abi/build/**/*.args
+zip4j-abi/build/**/reports/
+zip4j-abi/build/**/classes/
+zip4j-abi/build/**/generated/
+zip4j-abi/build/**/tmp/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+*.sublime-*
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Package managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Documentation build
+docs/_build/
+site/
+
+# Local configuration files
+local.properties

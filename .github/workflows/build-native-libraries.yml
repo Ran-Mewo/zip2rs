@@ -1,0 +1,200 @@
+name: Build Native Libraries
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'zip4j-abi/**'
+      - '.github/workflows/build-native-libraries.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'zip4j-abi/**'
+      - '.github/workflows/build-native-libraries.yml'
+  workflow_dispatch:
+
+jobs:
+  build-native:
+    # Skip the entire job if commit message contains [skip ci]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    strategy:
+      matrix:
+        include:
+          # macOS Intel
+          - os: macos-13
+            arch: x86_64
+            target: darwin-x86_64
+            graal_arch: amd64
+          # macOS Apple Silicon
+          - os: macos-14
+            arch: aarch64
+            target: darwin-aarch64
+            graal_arch: aarch64
+          # Linux x86_64 (musl)
+          - os: ubuntu-latest
+            arch: x86_64
+            target: linux-x86_64-musl
+            graal_arch: amd64
+            use_musl: true
+          # Linux ARM64 (musl)
+          - os: ubuntu-latest
+            arch: aarch64
+            target: linux-aarch64-musl
+            graal_arch: aarch64
+            use_musl: true
+            cross_compile: true
+          # Windows x86_64
+          - os: windows-latest
+            arch: x86_64
+            target: windows-x86_64
+            graal_arch: amd64
+          # Windows ARM64
+          - os: windows-latest
+            arch: aarch64
+            target: windows-aarch64
+            graal_arch: aarch64
+            cross_compile: true
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Oracle GraalVM 24
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '21'
+        distribution: 'graalvm'
+        version: '24.0.0'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        native-image-job-reports: 'true'
+
+    - name: Install musl tools (Linux musl builds)
+      if: matrix.use_musl == true
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools musl-dev
+        if [ "${{ matrix.cross_compile }}" = "true" ]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+        fi
+
+    - name: Set up cross-compilation (Linux ARM64)
+      if: matrix.target == 'linux-aarch64-musl'
+      run: |
+        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Make gradlew executable
+      if: runner.os != 'Windows'
+      run: chmod +x ./zip4j-abi/gradlew
+
+    - name: Build native library (macOS)
+      if: startsWith(matrix.os, 'macos')
+      working-directory: ./zip4j-abi
+      run: |
+        ./gradlew clean nativeCompile
+
+    - name: Build native library (Linux musl)
+      if: matrix.use_musl == true && matrix.cross_compile != true
+      working-directory: ./zip4j-abi
+      run: |
+        ./gradlew clean nativeCompile
+
+    - name: Build native library (Linux ARM64 musl)
+      if: matrix.target == 'linux-aarch64-musl'
+      working-directory: ./zip4j-abi
+      run: |
+        ./gradlew clean nativeCompile
+
+    - name: Build native library (Windows x86_64)
+      if: matrix.os == 'windows-latest' && matrix.arch == 'x86_64'
+      working-directory: ./zip4j-abi
+      run: |
+        .\gradlew.bat clean nativeCompile
+
+    - name: Build native library (Windows ARM64)
+      if: matrix.target == 'windows-aarch64'
+      working-directory: ./zip4j-abi
+      run: |
+        .\gradlew.bat clean nativeCompile
+
+    - name: Create target directory structure
+      run: |
+        mkdir -p zip4j-abi/build/native/nativeCompile/${{ matrix.target }}
+
+    - name: Copy artifacts (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        find ./zip4j-abi -name "*.so" -o -name "*.dylib" -o -name "*.a" | while read file; do
+          cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
+        done
+        find ./zip4j-abi -name "*.h" | while read file; do
+          cp "$file" "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
+        done
+
+    - name: Copy artifacts (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        Get-ChildItem -Path "./zip4j-abi" -Recurse -Include "*.dll", "*.lib", "*.h" | ForEach-Object {
+          Copy-Item $_.FullName "zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/"
+        }
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-${{ matrix.target }}
+        path: zip4j-abi/build/native/nativeCompile/${{ matrix.target }}/
+        retention-days: 30
+
+  commit-artifacts:
+    needs: build-native
+    runs-on: ubuntu-latest
+    # Skip the entire job if commit message contains [skip ci]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Organize artifacts
+      run: |
+        mkdir -p zip4j-abi/build/native/nativeCompile
+        for dir in artifacts/native-*; do
+          target=$(basename "$dir" | sed 's/native-//')
+          mkdir -p "zip4j-abi/build/native/nativeCompile/$target"
+          cp -r "$dir"/* "zip4j-abi/build/native/nativeCompile/$target/"
+        done
+
+    - name: Commit and push artifacts
+      run: |
+        echo "If this job fails then make sure the workflow has write access. In the repository, go to Settings > Actions > General and check 'Read and write permissions'."
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add zip4j-abi/build/native/nativeCompile/
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update native libraries for all platforms [skip ci]"
+          git push
+        fi

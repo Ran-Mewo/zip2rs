@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'org.graalvm.buildtools.native' version '0.10.6'
+}
+
+group = 'io.github.ran'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'net.lingala.zip4j:zip4j:2.11.5'
+}
+
+graalvmNative {
+    binaries {
+        main {
+            sharedLibrary = true
+            useFatJar = true
+            buildArgs.addAll([
+                    '-H:+UnlockExperimentalVMOptions',
+                    '-H:Name=zip4j-abi',
+                    '--no-fallback',
+                    '-march=compatibility',
+                    '-O9'
+            ])
+        }
+        test {
+            buildArgs.addAll([
+                    '-H:+UnlockExperimentalVMOptions',
+                    '--no-fallback',
+                    '-Ob',
+                    '-H:+ReportExceptionStackTraces'
+            ])
+        }
+    }
+}
+
+test { // Always use nativeTest instead of test
+    useJUnitPlatform()
+    ignoreFailures = true // we'll get failures when running tests in regular mode
+}
+test.finalizedBy nativeTest
