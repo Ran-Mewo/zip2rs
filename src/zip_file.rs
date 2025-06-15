@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::os::raw::{c_int, c_longlong};
+use std::os::raw::{c_char, c_int, c_longlong};
 use crate::error::Result;
 use crate::ffi::{self, helpers};
 use crate::zip_entry::ZipEntry;
@@ -37,7 +37,7 @@ impl ZipFile {
         let result = unsafe {
             ffi::zip4j_create(
                 ffi::get_thread(),
-                c_path.as_ptr() as *mut i8,
+                c_path.as_ptr() as *mut c_char,
                 &mut handle
             )
         };
@@ -75,8 +75,8 @@ impl ZipFile {
         let result = unsafe {
             ffi::zip4j_create_with_password(
                 ffi::get_thread(),
-                c_path.as_ptr() as *mut i8,
-                c_password.as_ptr() as *mut i8,
+                c_path.as_ptr() as *mut c_char,
+                c_password.as_ptr() as *mut c_char,
                 &mut handle
             )
         };
@@ -100,7 +100,7 @@ impl ZipFile {
             ffi::zip4j_set_password(
                 ffi::get_thread(),
                 self.handle,
-                c_password.as_ptr() as *mut i8
+                c_password.as_ptr() as *mut c_char
             )
         };
         
@@ -174,24 +174,24 @@ impl ZipFile {
     /// Get the file path of the zip file
     pub fn file_path(&self) -> Result<String> {
         const BUFFER_SIZE: usize = 1024;
-        let mut buffer = vec![0i8; BUFFER_SIZE];
+        let mut buffer = vec![0u8; BUFFER_SIZE];
         let mut path_length: c_int = 0;
-        
+
         let result = unsafe {
             ffi::zip4j_get_file_path(
                 ffi::get_thread(),
                 self.handle,
-                buffer.as_mut_ptr(),
+                buffer.as_mut_ptr() as *mut c_char,
                 BUFFER_SIZE as c_int,
                 &mut path_length
             )
         };
-        
+
         if helpers::is_error(result) {
             return Err(crate::error::ZipError::from_code(result));
         }
-        
-        helpers::read_string_from_buffer(&buffer, path_length)
+
+        helpers::read_string_from_buffer_u8(&buffer, path_length)
     }
     
     /// Get the comment of the zip file
@@ -204,14 +204,14 @@ impl ZipFile {
         }
 
         const BUFFER_SIZE: usize = 1024;
-        let mut buffer = vec![0i8; BUFFER_SIZE];
+        let mut buffer = vec![0u8; BUFFER_SIZE];
         let mut comment_length: c_int = 0;
 
         let result = unsafe {
             ffi::zip4j_get_comment(
                 ffi::get_thread(),
                 self.handle,
-                buffer.as_mut_ptr(),
+                buffer.as_mut_ptr() as *mut c_char,
                 BUFFER_SIZE as c_int,
                 &mut comment_length
             )
@@ -221,7 +221,7 @@ impl ZipFile {
             return Ok(String::new()); // Return empty string instead of error
         }
 
-        helpers::read_string_from_buffer(&buffer, comment_length)
+        helpers::read_string_from_buffer_u8(&buffer, comment_length)
     }
 
     /// Set the comment of the zip file
@@ -248,7 +248,7 @@ impl ZipFile {
             ffi::zip4j_set_comment(
                 ffi::get_thread(),
                 self.handle,
-                c_comment.as_ptr() as *mut i8
+                c_comment.as_ptr() as *mut c_char
             )
         };
 
@@ -318,7 +318,7 @@ impl ZipFile {
             ffi::zip4j_get_entry_by_name(
                 ffi::get_thread(),
                 self.handle,
-                c_name.as_ptr() as *mut i8,
+                c_name.as_ptr() as *mut c_char,
                 &mut entry_handle
             )
         };
@@ -343,7 +343,7 @@ impl ZipFile {
             ffi::zip4j_add_file(
                 ffi::get_thread(),
                 self.handle,
-                c_path.as_ptr() as *mut i8
+                c_path.as_ptr() as *mut c_char
             )
         };
 
@@ -367,7 +367,7 @@ impl ZipFile {
         let c_password = match &params.password {
             Some(pwd) => {
                 let c_pwd = helpers::to_c_string(pwd)?;
-                c_pwd.as_ptr() as *mut i8
+                c_pwd.as_ptr() as *mut c_char
             }
             None => std::ptr::null_mut(),
         };
@@ -376,7 +376,7 @@ impl ZipFile {
             ffi::zip4j_add_file_with_params(
                 ffi::get_thread(),
                 self.handle,
-                c_path.as_ptr() as *mut i8,
+                c_path.as_ptr() as *mut c_char,
                 params.compression_level.into(),
                 params.compression_method.into(),
                 params.encryption_method.into(),
@@ -405,7 +405,7 @@ impl ZipFile {
             ffi::zip4j_add_directory(
                 ffi::get_thread(),
                 self.handle,
-                c_path.as_ptr() as *mut i8
+                c_path.as_ptr() as *mut c_char
             )
         };
 
@@ -429,7 +429,7 @@ impl ZipFile {
         let c_password = match &params.password {
             Some(pwd) => {
                 let c_pwd = helpers::to_c_string(pwd)?;
-                c_pwd.as_ptr() as *mut i8
+                c_pwd.as_ptr() as *mut c_char
             }
             None => std::ptr::null_mut(),
         };
@@ -438,7 +438,7 @@ impl ZipFile {
             ffi::zip4j_add_directory_with_params(
                 ffi::get_thread(),
                 self.handle,
-                c_path.as_ptr() as *mut i8,
+                c_path.as_ptr() as *mut c_char,
                 params.compression_level.into(),
                 params.compression_method.into(),
                 params.encryption_method.into(),
@@ -467,7 +467,7 @@ impl ZipFile {
         let c_password = match &params.password {
             Some(pwd) => {
                 let c_pwd = helpers::to_c_string(pwd)?;
-                c_pwd.as_ptr() as *mut i8
+                c_pwd.as_ptr() as *mut c_char
             }
             None => std::ptr::null_mut(),
         };
@@ -476,7 +476,7 @@ impl ZipFile {
             ffi::zip4j_add_data(
                 ffi::get_thread(),
                 self.handle,
-                c_name.as_ptr() as *mut i8,
+                c_name.as_ptr() as *mut c_char,
                 data.as_ptr() as *mut i8,
                 data.len() as c_int,
                 params.compression_level.into(),
@@ -507,7 +507,7 @@ impl ZipFile {
             ffi::zip4j_extract_all(
                 ffi::get_thread(),
                 self.handle,
-                c_path.as_ptr() as *mut i8
+                c_path.as_ptr() as *mut c_char
             )
         };
 
@@ -533,8 +533,8 @@ impl ZipFile {
             ffi::zip4j_extract_file(
                 ffi::get_thread(),
                 self.handle,
-                c_name.as_ptr() as *mut i8,
-                c_path.as_ptr() as *mut i8
+                c_name.as_ptr() as *mut c_char,
+                c_path.as_ptr() as *mut c_char
             )
         };
 
@@ -560,7 +560,7 @@ impl ZipFile {
                 ffi::get_thread(),
                 self.handle,
                 entry.handle(),
-                c_path.as_ptr() as *mut i8
+                c_path.as_ptr() as *mut c_char
             )
         };
 
@@ -639,7 +639,7 @@ impl ZipFile {
             ffi::zip4j_remove_file(
                 ffi::get_thread(),
                 self.handle,
-                c_name.as_ptr() as *mut i8
+                c_name.as_ptr() as *mut c_char
             )
         };
 

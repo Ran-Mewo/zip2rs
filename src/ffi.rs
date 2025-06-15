@@ -175,14 +175,14 @@ pub mod helpers {
     /// Get the last error message for a handle
     pub fn get_last_error(handle: c_longlong) -> Result<String> {
         const BUFFER_SIZE: usize = 1024;
-        let mut buffer = vec![0i8; BUFFER_SIZE];
+        let mut buffer = vec![0u8; BUFFER_SIZE];
         let mut error_length: c_int = 0;
 
         let result = unsafe {
             zip4j_get_last_error(
                 get_thread(),
                 handle,
-                buffer.as_mut_ptr(),
+                buffer.as_mut_ptr() as *mut c_char,
                 BUFFER_SIZE as c_int,
                 &mut error_length
             )
@@ -192,6 +192,17 @@ pub mod helpers {
             return Ok("Failed to get error message".to_string());
         }
 
-        read_string_from_buffer(&buffer, error_length)
+        read_string_from_buffer_u8(&buffer, error_length)
+    }
+
+    /// Read a string from a u8 buffer with length (for cross-platform compatibility)
+    pub fn read_string_from_buffer_u8(buffer: &[u8], length: c_int) -> Result<String> {
+        if length <= 0 {
+            return Ok(String::new());
+        }
+
+        let slice = &buffer[..length as usize];
+        let cstr = unsafe { CStr::from_ptr(slice.as_ptr() as *const c_char) };
+        Ok(cstr.to_str()?.to_string())
     }
 }

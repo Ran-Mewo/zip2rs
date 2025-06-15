@@ -1,4 +1,4 @@
-use std::os::raw::{c_int, c_longlong};
+use std::os::raw::{c_char, c_int, c_longlong};
 use crate::error::Result;
 use crate::ffi::{self, helpers};
 use crate::types::{CompressionMethod, EncryptionMethod};
@@ -26,24 +26,24 @@ impl ZipEntry {
     /// Get the name of this entry
     pub fn name(&self) -> Result<String> {
         const BUFFER_SIZE: usize = 1024;
-        let mut buffer = vec![0i8; BUFFER_SIZE];
+        let mut buffer = vec![0u8; BUFFER_SIZE];
         let mut name_length: c_int = 0;
-        
+
         let result = unsafe {
             ffi::zip4j_entry_get_name(
                 ffi::get_thread(),
                 self.handle,
-                buffer.as_mut_ptr(),
+                buffer.as_mut_ptr() as *mut c_char,
                 BUFFER_SIZE as c_int,
                 &mut name_length
             )
         };
-        
+
         if helpers::is_error(result) {
             return Err(crate::error::ZipError::from_code(result));
         }
-        
-        helpers::read_string_from_buffer(&buffer, name_length)
+
+        helpers::read_string_from_buffer_u8(&buffer, name_length)
     }
     
     /// Get the uncompressed size of this entry in bytes

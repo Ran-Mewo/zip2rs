@@ -287,6 +287,8 @@ fn generate_bindings(header_path: &PathBuf) {
     let bindings = bindgen::Builder::default()
         .header(header_path.to_string_lossy())
         .clang_arg(format!("-I{}", header_dir.to_string_lossy()))
+        // Ensure consistent char handling across platforms
+        .default_alias_style(bindgen::AliasVariation::TypeAlias)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
