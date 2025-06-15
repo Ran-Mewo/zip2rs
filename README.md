@@ -1,6 +1,6 @@
 # Zip4j-Rust
 
-A comprehensive Rust API for zip file operations that leverages the advanced capabilities of the [Zip4j](https://github.com/srikanth-lingala/zip4j) Java library through a GraalVM-generated native interface.
+A complete slop comprehensive Rust API for zip file operations that leverages the advanced capabilities of the [Zip4j](https://github.com/srikanth-lingala/zip4j) Java library through a GraalVM-generated native interface.\
 
 ## Features
 
@@ -33,7 +33,7 @@ This project consists of two main components:
 
 - Rust 1.70+ 
 - GraalVM with Native Image support
-- Java 21+
+- Java 24+
 
 ### Building
 
