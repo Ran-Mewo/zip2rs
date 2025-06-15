@@ -140,14 +140,40 @@ fn setup_linking(lib_dir: &PathBuf, target_os: &str) {
             println!("cargo:rustc-link-lib=dylib=zip4j-abi");
         }
         "macos" => {
-            // On macOS, link to the dynamic library
-            println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            // On macOS, check which naming convention is used
+            if lib_dir.join("libzip4j-abi.dylib").exists() {
+                println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            } else if lib_dir.join("zip4j-abi.dylib").exists() {
+                // Create a symlink with the expected lib prefix or copy the file
+                let src = lib_dir.join("zip4j-abi.dylib");
+                let dst = lib_dir.join("libzip4j-abi.dylib");
+                if !dst.exists() {
+                    if std::fs::hard_link(&src, &dst).is_err() {
+                        // If hard link fails, try copying
+                        let _ = std::fs::copy(&src, &dst);
+                    }
+                }
+                println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            }
             // Add rpath for runtime library loading
             println!("cargo:rustc-link-arg=-Wl,-rpath,@loader_path");
         }
         "linux" => {
-            // On Linux, link to the shared library
-            println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            // On Linux, check which naming convention is used
+            if lib_dir.join("libzip4j-abi.so").exists() {
+                println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            } else if lib_dir.join("zip4j-abi.so").exists() {
+                // Create a symlink with the expected lib prefix or copy the file
+                let src = lib_dir.join("zip4j-abi.so");
+                let dst = lib_dir.join("libzip4j-abi.so");
+                if !dst.exists() {
+                    if std::fs::hard_link(&src, &dst).is_err() {
+                        // If hard link fails, try copying
+                        let _ = std::fs::copy(&src, &dst);
+                    }
+                }
+                println!("cargo:rustc-link-lib=dylib=zip4j-abi");
+            }
             // Add rpath for runtime library loading
             println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
         }
@@ -184,9 +210,21 @@ fn copy_runtime_libraries(lib_dir: &PathBuf, target_os: &str) {
             for dylib_name in &["libzip4j-abi.dylib", "zip4j-abi.dylib"] {
                 let dylib_path = lib_dir.join(dylib_name);
                 if dylib_path.exists() {
+                    // Copy with both naming conventions to ensure compatibility
                     let target_dylib = target_dir.join(dylib_name);
                     if std::fs::copy(&dylib_path, &target_dylib).is_ok() {
                         println!("cargo:warning=Copied dylib to {}", target_dylib.display());
+                    }
+
+                    // Also copy with the other naming convention if it doesn't exist
+                    let alt_name = if dylib_name.starts_with("lib") {
+                        "zip4j-abi.dylib"
+                    } else {
+                        "libzip4j-abi.dylib"
+                    };
+                    let alt_target = target_dir.join(alt_name);
+                    if !alt_target.exists() {
+                        let _ = std::fs::copy(&dylib_path, &alt_target);
                     }
                     break;
                 }
@@ -196,9 +234,21 @@ fn copy_runtime_libraries(lib_dir: &PathBuf, target_os: &str) {
             for so_name in &["libzip4j-abi.so", "zip4j-abi.so"] {
                 let so_path = lib_dir.join(so_name);
                 if so_path.exists() {
+                    // Copy with both naming conventions to ensure compatibility
                     let target_so = target_dir.join(so_name);
                     if std::fs::copy(&so_path, &target_so).is_ok() {
                         println!("cargo:warning=Copied shared library to {}", target_so.display());
+                    }
+
+                    // Also copy with the other naming convention if it doesn't exist
+                    let alt_name = if so_name.starts_with("lib") {
+                        "zip4j-abi.so"
+                    } else {
+                        "libzip4j-abi.so"
+                    };
+                    let alt_target = target_dir.join(alt_name);
+                    if !alt_target.exists() {
+                        let _ = std::fs::copy(&so_path, &alt_target);
                     }
                     break;
                 }
