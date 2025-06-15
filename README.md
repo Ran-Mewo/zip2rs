@@ -1,6 +1,6 @@
 # Zip4j-Rust
 
-A complete slop comprehensive Rust API for zip file operations that leverages the advanced capabilities of the [Zip4j](https://github.com/srikanth-lingala/zip4j) Java library through a GraalVM-generated native interface
+A complete slop comprehensive Rust API for zip file operations that leverages the advanced capabilities of the [Zip4j](https://github.com/srikanth-lingala/zip4j) Java library through a GraalVM-generated native interface.
 
 ## Features
 
