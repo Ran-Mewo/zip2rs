@@ -34,8 +34,7 @@ graalvmNative {
                 buildArgs.addAll([
                     '--libc=musl',
                     '--target=linux-aarch64',
-                    "-H:CCompilerPath=${cc}",
-                    "-H:CXXCompilerPath=${System.getenv('CXX') ?: cc.replace('gcc', 'g++')}"
+                    "-H:CCompilerPath=${cc}"
                 ])
             }
         }
