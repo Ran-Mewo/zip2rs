@@ -20,8 +20,7 @@ graalvmNative {
             sharedLibrary = true
             useFatJar = true
             // Use faster optimization for ARM64 builds (likely running under QEMU emulation)
-            def arch = System.getProperty("os.arch")
-            def optimizationLevel = arch == "aarch64" ? "-O1" : "-O9"
+            def optimizationLevel = System.getProperty("os.arch") == "aarch64" ? "-O1" : "-O9"
 
             buildArgs.addAll([
                     '-H:+UnlockExperimentalVMOptions',

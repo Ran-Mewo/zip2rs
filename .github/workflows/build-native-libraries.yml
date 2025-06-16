@@ -36,13 +36,13 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (musl) - QEMU emulation
+          # Linux ARM64 (musl) - Docker ARM64 image
           - os: ubuntu-latest
             arch: aarch64
             target: linux-aarch64-musl
             graal_arch: aarch64
             use_musl: true
-            use_qemu: true
+            use_docker_arm64: true
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
@@ -71,12 +71,6 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         native-image-job-reports: 'true'
         set-java-home: 'true'
-
-    - name: Set up QEMU emulation (ARM64)
-      if: matrix.use_qemu == true
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: linux/arm64
 
     - name: Install musl tools (Linux musl builds)
       if: matrix.use_musl == true && matrix.use_qemu != true
@@ -111,8 +105,8 @@ jobs:
       run: |
         ./gradlew clean nativeCompile
 
-    - name: Build native library (Linux ARM64 musl with QEMU)
-      if: matrix.use_qemu == true
+    - name: Build native library (Linux ARM64 musl)
+      if: matrix.use_docker_arm64 == true
       run: |
         docker run --rm --platform linux/arm64 \
           -v ${{ github.workspace }}:/workspace \
