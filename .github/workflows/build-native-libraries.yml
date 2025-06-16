@@ -24,37 +24,31 @@ jobs:
           - os: macos-13
             arch: x86_64
             target: darwin-x86_64
-            graal_arch: amd64
           # macOS Apple Silicon
           - os: macos-14
             arch: aarch64
             target: darwin-aarch64
-            graal_arch: aarch64
           # Linux x86_64 (musl)
           - os: ubuntu-latest
             arch: x86_64
             target: linux-x86_64-musl
-            graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (musl) - Docker ARM64 image
-          - os: ubuntu-latest
+          # Linux ARM64 (musl) - self-hosted runner
+          - os: self-hosted
             arch: aarch64
             target: linux-aarch64-musl
-            graal_arch: aarch64
             use_musl: true
-            use_docker_arm64: true
+            runner_labels: [self-hosted, linux, ARM64]
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
             target: windows-x86_64
-            graal_arch: amd64
           # Windows ARM64 - commented out since x86_64 has compatibility
           # - os: windows-11-arm64
           #   arch: aarch64
           #   target: windows-aarch64
-          #   graal_arch: aarch64
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner_labels || matrix.os }}
 
     steps:
     - name: Checkout repository
@@ -72,12 +66,8 @@ jobs:
         native-image-job-reports: 'true'
         set-java-home: 'true'
 
-    - name: Set up Docker Buildx (for multi-platform)
-      if: matrix.use_docker_arm64 == true
-      uses: docker/setup-buildx-action@v3
-
     - name: Install musl tools (Linux musl builds)
-      if: matrix.use_musl == true && matrix.use_docker_arm64 != true
+      if: matrix.use_musl == true
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
@@ -103,28 +93,11 @@ jobs:
       run: |
         ./gradlew clean nativeCompile
 
-    - name: Build native library (Linux musl)
-      if: matrix.use_musl == true && matrix.cross_compile != true && matrix.use_docker_arm64 != true
+    - name: Build native library (Linux)
+      if: matrix.use_musl == true
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
-
-    - name: Build native library (Linux ARM64 musl)
-      if: matrix.use_docker_arm64 == true
-      run: |
-        docker run --rm --platform linux/arm64 \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/zip4j-abi \
-          -e USE_MUSL=true \
-          ubuntu:22.04 \
-          sh -c "
-            apt-get update && apt-get install -y curl musl-tools musl-dev gcc
-            curl -L https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_linux-aarch64_bin.tar.gz | tar -xz -C /opt
-            export JAVA_HOME=/opt/graalvm-jdk-21.0.7+8.1
-            export GRAALVM_HOME=/opt/graalvm-jdk-21.0.7+8.1
-            export PATH=\$JAVA_HOME/bin:\$PATH
-            ./gradlew clean nativeCompile
-          "
 
     - name: Build native library (Windows x86_64)
       if: matrix.os == 'windows-latest' && matrix.arch == 'x86_64'
