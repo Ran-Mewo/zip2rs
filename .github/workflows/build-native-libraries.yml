@@ -33,11 +33,10 @@ jobs:
             arch: x86_64
             target: linux-x86_64-musl
             use_musl: true
-          # Linux ARM64 (musl) - self-hosted runner
+          # Linux ARM64 (glibc) - self-hosted runner
           - os: self-hosted
             arch: aarch64
-            target: linux-aarch64-musl
-            use_musl: true
+            target: linux-aarch64
             runner_labels: [self-hosted, linux, ARM64]
           # Windows x86_64
           - os: windows-latest
@@ -71,9 +70,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev zlib1g-dev build-essential
-        # Create symlink for musl gcc that GraalVM expects
-        sudo ln -sf /usr/bin/musl-gcc /usr/local/bin/aarch64-linux-musl-gcc
         echo "USE_MUSL=true" >> $GITHUB_ENV
+
+    - name: Install development libraries (ARM64 Linux)
+      if: matrix.target == 'linux-aarch64'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zlib1g-dev build-essential
 
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
@@ -97,6 +100,12 @@ jobs:
 
     - name: Build native library (Linux)
       if: matrix.use_musl == true
+      working-directory: ./zip4j-abi
+      run: |
+        ./gradlew clean nativeCompile
+
+    - name: Build native library (Linux ARM64)
+      if: matrix.target == 'linux-aarch64'
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
