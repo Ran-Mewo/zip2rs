@@ -36,12 +36,11 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (musl) - using emulation
+          # Linux ARM64 (glibc) - using emulation
           - os: ubuntu-latest
             arch: aarch64
-            target: linux-aarch64-musl
+            target: linux-aarch64
             graal_arch: aarch64
-            use_musl: true
             use_emulation: true
           # Windows x86_64
           - os: windows-latest
@@ -73,7 +72,7 @@ jobs:
         native-image-job-reports: 'true'
 
     - name: Install musl tools (Linux musl builds)
-      if: matrix.use_musl == true && matrix.use_emulation != true
+      if: matrix.use_musl == true
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
@@ -110,15 +109,14 @@ jobs:
       run: |
         ./gradlew clean nativeCompile
 
-    - name: Build native library (Linux ARM64 musl)
+    - name: Build native library (Linux ARM64)
       if: matrix.use_emulation == true
       run: |
         docker run --rm --platform linux/arm64 \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace/zip4j-abi \
-          ghcr.io/graalvm/graalvm-community:21-musl \
+          container-registry.oracle.com/graalvm/jdk:21 \
           sh -c "
-            apk add --no-cache musl-dev gcc libc-dev
             ./gradlew clean nativeCompile
           "
 
