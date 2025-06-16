@@ -72,8 +72,14 @@ jobs:
         native-image-job-reports: 'true'
         set-java-home: 'true'
 
+    - name: Set up QEMU emulation (ARM64)
+      if: matrix.use_qemu == true
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: linux/arm64
+
     - name: Install musl tools (Linux musl builds)
-      if: matrix.use_musl == true
+      if: matrix.use_musl == true && matrix.use_qemu != true
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
@@ -105,11 +111,17 @@ jobs:
       run: |
         ./gradlew clean nativeCompile
 
-    - name: Build native library (Linux ARM64 musl)
-      if: matrix.target == 'linux-aarch64-musl'
-      working-directory: ./zip4j-abi
+    - name: Build native library (Linux ARM64 musl with QEMU)
+      if: matrix.use_qemu == true
       run: |
-        ./gradlew clean nativeCompile
+        docker run --rm --platform linux/arm64 \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace/zip4j-abi \
+          container-registry.oracle.com/graalvm/jdk:21 \
+          sh -c "
+            apk add --no-cache musl-dev gcc libc-dev
+            ./gradlew clean nativeCompile
+          "
 
     - name: Build native library (Windows x86_64)
       if: matrix.os == 'windows-latest' && matrix.arch == 'x86_64'
