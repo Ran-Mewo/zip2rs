@@ -72,6 +72,10 @@ jobs:
         native-image-job-reports: 'true'
         set-java-home: 'true'
 
+    - name: Set up Docker Buildx (for multi-platform)
+      if: matrix.use_docker_arm64 == true
+      uses: docker/setup-buildx-action@v3
+
     - name: Install musl tools (Linux musl builds)
       if: matrix.use_musl == true && matrix.use_docker_arm64 != true
       run: |
