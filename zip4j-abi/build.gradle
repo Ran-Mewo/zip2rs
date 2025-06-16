@@ -19,9 +19,6 @@ graalvmNative {
         main {
             sharedLibrary = true
             useFatJar = true
-            // Use faster optimization for ARM64 builds (likely running under QEMU emulation)
-            def optimizationLevel = System.getProperty("os.arch") == "aarch64" ? "-O1" : "-O9"
-
             buildArgs.addAll([
                     '-H:+UnlockExperimentalVMOptions',
                     '-H:Name=zip4j-abi',
@@ -29,6 +26,15 @@ graalvmNative {
                     '-O9',
                     '-march=compatibility'
             ])
+
+            // Add musl support when USE_MUSL environment variable is set
+            if (System.getenv('USE_MUSL') == 'true') {
+                println "Configuring for musl-compatible shared library on ${arch}"
+                buildArgs.addAll([
+                    '--libc=musl',
+                    '-H:+StaticExecutableWithDynamicLibC'  // Keep shared library but use musl
+                ])
+            }
         }
         test {
             buildArgs.addAll([
