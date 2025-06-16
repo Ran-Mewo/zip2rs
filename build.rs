@@ -1,6 +1,5 @@
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -41,21 +40,7 @@ fn main() {
         }
     }
 
-    // If no library found, try to build it
-    if found_lib_dir.is_none() {
-        println!("cargo:warning=Native library not found for platform {}, attempting to build...", platform_dir);
-
-        let zip4j_abi_dir = PathBuf::from(&manifest_dir).join("zip4j-abi");
-        if zip4j_abi_dir.exists() {
-            build_native_library(&zip4j_abi_dir, &target_os);
-
-            // Check again after build
-            let build_output_dir = zip4j_abi_dir.join("build").join("native").join("nativeCompile");
-            if has_native_library(&build_output_dir, &target_os) {
-                found_lib_dir = Some(build_output_dir);
-            }
-        }
-    }
+    // Libraries should be pre-built by GitHub Actions workflow
 
     let lib_dir = found_lib_dir.unwrap_or_else(|| {
         panic!("Native library not found for platform {}. Please build it first or check the zip4j-abi/build/native/nativeCompile/ directory.", platform_dir);
@@ -106,50 +91,7 @@ fn has_native_library(path: &PathBuf, target_os: &str) -> bool {
     }
 }
 
-fn build_native_library(zip4j_abi_dir: &PathBuf, target_os: &str) {
-    let gradle_cmd = if target_os == "windows" {
-        "gradlew.bat"
-    } else {
-        "./gradlew"
-    };
 
-    // Make gradlew executable on Unix systems
-    if target_os != "windows" {
-        let gradlew_path = zip4j_abi_dir.join("gradlew");
-        if gradlew_path.exists() {
-            let _ = Command::new("chmod")
-                .args(&["+x", "gradlew"])
-                .current_dir(zip4j_abi_dir)
-                .output();
-        }
-    }
-
-    let output = if target_os == "windows" {
-        Command::new("cmd")
-            .args(&["/C", gradle_cmd, "nativeCompile"])
-            .current_dir(zip4j_abi_dir)
-            .output()
-    } else {
-        Command::new(gradle_cmd)
-            .args(&["nativeCompile"])
-            .current_dir(zip4j_abi_dir)
-            .output()
-    };
-
-    match output {
-        Ok(result) => {
-            if !result.status.success() {
-                let stderr = String::from_utf8_lossy(&result.stderr);
-                println!("cargo:warning=Failed to build native library: {}", stderr);
-            } else {
-                println!("cargo:warning=Successfully built native library");
-            }
-        }
-        Err(e) => {
-            println!("cargo:warning=Failed to execute gradle: {}", e);
-        }
-    }
-}
 
 fn setup_linking(lib_dir: &PathBuf, target_os: &str) {
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
