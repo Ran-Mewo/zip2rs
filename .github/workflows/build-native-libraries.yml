@@ -104,7 +104,7 @@ jobs:
         ./gradlew clean nativeCompile
 
     - name: Build native library (Linux)
-      if: matrix.use_musl == true
+      if: startsWith(matrix.target, 'linux')
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
