@@ -37,7 +37,7 @@ jobs:
             graal_arch: amd64
             use_musl: true
           # Linux ARM64 (musl) - native ARM64 runner
-          - os: ubuntu-24.04-arm64
+          - os: ubuntu-22.04-arm64
             arch: aarch64
             target: linux-aarch64-musl
             graal_arch: aarch64
@@ -48,11 +48,10 @@ jobs:
             target: windows-x86_64
             graal_arch: amd64
           # Windows ARM64
-          - os: windows-latest
+          - os: windows-11-arm64
             arch: aarch64
             target: windows-aarch64
             graal_arch: aarch64
-            cross_compile: true
 
     runs-on: ${{ matrix.os }}
 
