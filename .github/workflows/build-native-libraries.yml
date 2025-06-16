@@ -33,10 +33,10 @@ jobs:
             arch: x86_64
             target: linux-x86_64-musl
             use_musl: true
-          # Linux x86_64 (musl)
+          # Linux x86_64 (glibc)
           - os: ubuntu-latest
             arch: x86_64
-            target: linux-x86_64-gnu
+            target: linux-x86_64
             use_musl: false
           # Linux ARM64 (glibc) - self-hosted runner
           - os: self-hosted
@@ -105,12 +105,6 @@ jobs:
 
     - name: Build native library (Linux)
       if: startsWith(matrix.target, 'linux')
-      working-directory: ./zip4j-abi
-      run: |
-        ./gradlew clean nativeCompile
-
-    - name: Build native library (Linux ARM64)
-      if: matrix.target == 'linux-aarch64'
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
