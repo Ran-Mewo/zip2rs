@@ -106,7 +106,7 @@ jobs:
         ./gradlew clean nativeCompile
 
     - name: Build native library (Linux musl)
-      if: matrix.use_musl == true && matrix.cross_compile != true
+      if: matrix.use_musl == true && matrix.cross_compile != true && matrix.use_qemu != true
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
