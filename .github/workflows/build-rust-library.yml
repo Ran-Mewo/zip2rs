@@ -1,0 +1,130 @@
+name: Build Rust Library
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - '.github/workflows/build-rust-library.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - '.github/workflows/build-rust-library.yml'
+  workflow_dispatch:
+
+jobs:
+  build-rust:
+    # Skip the entire job if commit message contains [skip ci]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    strategy:
+      matrix:
+        include:
+          # Linux x86_64 (musl)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            cross: false
+          # Linux x86_64 (glibc)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            cross: false
+          # Linux ARM64 (musl)
+          - os: ubuntu-24.04-arm64
+            target: aarch64-unknown-linux-musl
+            cross: false
+            use_musl: true
+          # macOS Intel
+          - os: macos-13
+            target: x86_64-apple-darwin
+            cross: false
+          # macOS Apple Silicon
+          - os: macos-14
+            target: aarch64-apple-darwin
+            cross: false
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            cross: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+
+
+    - name: Install musl tools (Linux musl)
+      if: matrix.use_musl == true
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y musl-tools musl-dev
+
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ matrix.target }}-
+          ${{ runner.os }}-cargo-
+
+    - name: Build library
+      run: |
+        cargo build --release --target ${{ matrix.target }}
+
+    - name: Run tests
+      if: matrix.cross == false
+      run: |
+        cargo test --release --target ${{ matrix.target }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-${{ matrix.target }}
+        path: |
+          target/${{ matrix.target }}/release/libzip2rs.*
+          target/${{ matrix.target }}/release/zip2rs.dll
+          target/${{ matrix.target }}/release/zip2rs.exe
+        retention-days: 30
+        if-no-files-found: ignore
+
+  test-integration:
+    needs: build-rust
+    runs-on: ubuntu-latest
+    # Skip the entire job if commit message contains [skip ci]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Run integration tests
+      run: |
+        cargo test --release -- --test-threads=1

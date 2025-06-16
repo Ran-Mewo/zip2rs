@@ -36,12 +36,12 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (glibc) - cross-compilation
-          - os: ubuntu-latest
+          # Linux ARM64 (musl) - native ARM64 runner
+          - os: ubuntu-24.04-arm64
             arch: aarch64
-            target: linux-aarch64
+            target: linux-aarch64-musl
             graal_arch: aarch64
-            cross_compile: true
+            use_musl: true
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
@@ -70,20 +70,14 @@ jobs:
         version: '24.0.0'
         github-token: ${{ secrets.GITHUB_TOKEN }}
         native-image-job-reports: 'true'
+        set-java-home: 'true'
 
     - name: Install musl tools (Linux musl builds)
       if: matrix.use_musl == true
       run: |
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
-
-    - name: Set up cross-compilation (Linux ARM64)
-      if: matrix.target == 'linux-aarch64'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+        echo "USE_MUSL=true" >> $GITHUB_ENV
 
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
@@ -111,8 +105,8 @@ jobs:
       run: |
         ./gradlew clean nativeCompile
 
-    - name: Build native library (Linux ARM64)
-      if: matrix.target == 'linux-aarch64'
+    - name: Build native library (Linux ARM64 musl)
+      if: matrix.target == 'linux-aarch64-musl'
       working-directory: ./zip4j-abi
       run: |
         ./gradlew clean nativeCompile
