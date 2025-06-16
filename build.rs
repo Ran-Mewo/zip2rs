@@ -14,14 +14,23 @@ fn main() {
     println!("cargo:warning=Building for platform: {} ({})", platform_dir, target_os);
 
     // Try multiple locations for native libraries in priority order
-    let native_lib_paths = vec![
+    let mut native_lib_paths = vec![
         // 1. Default to general build output (when building locally)
         PathBuf::from(&manifest_dir).join("zip4j-abi").join("build").join("native").join("nativeCompile"),
         // 2. Default to prebuilt location (platform-specific)
         PathBuf::from(&manifest_dir).join("zip4j-abi").join("build").join("native").join("nativeCompile").join(&platform_dir),
-        // 3. Legacy lib directory (fallback)
-        PathBuf::from(&manifest_dir).join("lib"),
     ];
+
+    // 3. For musl targets, also try the corresponding glibc directory as fallback
+    if platform_dir.contains("musl") {
+        let glibc_platform_dir = platform_dir.replace("-musl", "");
+        native_lib_paths.push(
+            PathBuf::from(&manifest_dir).join("zip4j-abi").join("build").join("native").join("nativeCompile").join(&glibc_platform_dir)
+        );
+    }
+
+    // 4. Legacy lib directory (fallback)
+    native_lib_paths.push(PathBuf::from(&manifest_dir).join("lib"));
 
     let mut found_lib_dir = None;
     for path in &native_lib_paths {
@@ -103,6 +112,17 @@ fn build_native_library(zip4j_abi_dir: &PathBuf, target_os: &str) {
     } else {
         "./gradlew"
     };
+
+    // Make gradlew executable on Unix systems
+    if target_os != "windows" {
+        let gradlew_path = zip4j_abi_dir.join("gradlew");
+        if gradlew_path.exists() {
+            let _ = Command::new("chmod")
+                .args(&["+x", "gradlew"])
+                .current_dir(zip4j_abi_dir)
+                .output();
+        }
+    }
 
     let output = if target_os == "windows" {
         Command::new("cmd")
