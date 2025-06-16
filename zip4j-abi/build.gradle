@@ -26,8 +26,8 @@ graalvmNative {
                     '-H:+UnlockExperimentalVMOptions',
                     '-H:Name=zip4j-abi',
                     '--no-fallback',
-                    '-march=compatibility',
-                    optimizationLevel
+                    '-O9',
+                    '-march=compatibility'
             ])
         }
         test {
