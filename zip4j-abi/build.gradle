@@ -29,9 +29,11 @@ graalvmNative {
 
             // Add musl support when USE_MUSL environment variable is set
             if (System.getenv('USE_MUSL') == 'true') {
+                println "Configuring for musl-compatible shared library"
                 buildArgs.addAll([
                     '--libc=musl',
-                    '-H:+StaticExecutableWithDynamicLibC'  // Keep shared library but use musl
+                    '-H:+StaticExecutableWithDynamicLibC',  // Keep shared library but use musl
+                    '-H:-CheckToolchain'  // Disable toolchain checking for musl builds
                 ])
             }
         }
