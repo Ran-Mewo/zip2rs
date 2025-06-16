@@ -33,6 +33,11 @@ jobs:
             arch: x86_64
             target: linux-x86_64-musl
             use_musl: true
+          # Linux x86_64 (musl)
+          - os: ubuntu-latest
+            arch: x86_64
+            target: linux-x86_64-gnu
+            use_musl: false
           # Linux ARM64 (glibc) - self-hosted runner
           - os: self-hosted
             arch: aarch64
