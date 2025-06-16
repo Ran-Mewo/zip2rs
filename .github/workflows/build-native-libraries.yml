@@ -118,9 +118,9 @@ jobs:
           -v ${{ github.workspace }}:/workspace \
           -w /workspace/zip4j-abi \
           -e USE_MUSL=true \
-          alpine:3.19 \
+          ubuntu:22.04 \
           sh -c "
-            apk add --no-cache musl-dev gcc libc-dev curl bash gcompat
+            apt-get update && apt-get install -y curl musl-tools musl-dev gcc
             curl -L https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_linux-aarch64_bin.tar.gz | tar -xz -C /opt
             export JAVA_HOME=/opt/graalvm-jdk-21.0.7+8.1
             export GRAALVM_HOME=/opt/graalvm-jdk-21.0.7+8.1
