@@ -36,12 +36,12 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (glibc) - using emulation
+          # Linux ARM64 (glibc) - cross-compilation
           - os: ubuntu-latest
             arch: aarch64
             target: linux-aarch64
             graal_arch: aarch64
-            use_emulation: true
+            cross_compile: true
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
@@ -77,11 +77,13 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y musl-tools musl-dev
 
-    - name: Set up QEMU emulation (Linux ARM64)
-      if: matrix.use_emulation == true
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: linux/arm64
+    - name: Set up cross-compilation (Linux ARM64)
+      if: matrix.target == 'linux-aarch64'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
 
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
@@ -110,15 +112,10 @@ jobs:
         ./gradlew clean nativeCompile
 
     - name: Build native library (Linux ARM64)
-      if: matrix.use_emulation == true
+      if: matrix.target == 'linux-aarch64'
+      working-directory: ./zip4j-abi
       run: |
-        docker run --rm --platform linux/arm64 \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace/zip4j-abi \
-          container-registry.oracle.com/graalvm/jdk:21 \
-          sh -c "
-            ./gradlew clean nativeCompile
-          "
+        ./gradlew clean nativeCompile
 
     - name: Build native library (Windows x86_64)
       if: matrix.os == 'windows-latest' && matrix.arch == 'x86_64'

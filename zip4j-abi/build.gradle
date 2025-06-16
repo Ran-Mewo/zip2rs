@@ -26,8 +26,6 @@ graalvmNative {
                     '-march=compatibility',
                     '-O9'
             ])
-
-
         }
         test {
             buildArgs.addAll([
