@@ -48,11 +48,11 @@ jobs:
             arch: x86_64
             target: windows-x86_64
             graal_arch: amd64
-          # Windows ARM64
-          - os: windows-11-arm64
-            arch: aarch64
-            target: windows-aarch64
-            graal_arch: aarch64
+          # Windows ARM64 - commented out since x86_64 has compatibility
+          # - os: windows-11-arm64
+          #   arch: aarch64
+          #   target: windows-aarch64
+          #   graal_arch: aarch64
 
     runs-on: ${{ matrix.os }}
 
@@ -134,11 +134,12 @@ jobs:
       run: |
         .\gradlew.bat clean nativeCompile
 
-    - name: Build native library (Windows ARM64)
-      if: matrix.target == 'windows-aarch64'
-      working-directory: ./zip4j-abi
-      run: |
-        .\gradlew.bat clean nativeCompile
+    # Windows ARM64 build commented out - x86_64 has compatibility
+    # - name: Build native library (Windows ARM64)
+    #   if: matrix.target == 'windows-aarch64'
+    #   working-directory: ./zip4j-abi
+    #   run: |
+    #     .\gradlew.bat clean nativeCompile
 
     - name: Create target directory structure
       run: |

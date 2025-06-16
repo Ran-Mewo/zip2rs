@@ -50,10 +50,10 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             cross: false
-          # Windows ARM64 - cross-compilation
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            cross: true
+          # Windows ARM64 - commented out since x86_64 has compatibility
+          # - os: windows-latest
+          #   target: aarch64-pc-windows-msvc
+          #   cross: true
 
     runs-on: ${{ matrix.os }}
 
