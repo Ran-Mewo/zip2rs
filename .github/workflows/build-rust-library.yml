@@ -35,10 +35,9 @@ jobs:
             target: x86_64-unknown-linux-gnu
             cross: false
           # Linux ARM64 (musl)
-          - os: ubuntu-22.04-arm64
+          - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            cross: false
-            use_musl: true
+            cross: true
           # macOS Intel
           - os: macos-13
             target: x86_64-apple-darwin
@@ -51,10 +50,10 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             cross: false
-          # Windows ARM64
-          - os: windows-11-arm64
+          # Windows ARM64 - cross-compilation
+          - os: windows-latest
             target: aarch64-pc-windows-msvc
-            cross: false
+            cross: true
 
     runs-on: ${{ matrix.os }}
 
@@ -71,11 +70,17 @@ jobs:
 
 
 
-    - name: Install musl tools (Linux musl)
-      if: matrix.use_musl == true
+    - name: Install cross-compilation tools
+      if: matrix.cross == true
       run: |
         sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev
+        if [[ "${{ matrix.target }}" == *"musl"* ]]; then
+          sudo apt-get install -y musl-tools musl-dev
+        fi
+        if [[ "${{ matrix.target }}" == "aarch64"* ]]; then
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        fi
 
     - name: Cache Cargo dependencies
       uses: actions/cache@v4

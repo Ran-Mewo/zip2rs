@@ -36,12 +36,13 @@ jobs:
             target: linux-x86_64-musl
             graal_arch: amd64
             use_musl: true
-          # Linux ARM64 (musl) - native ARM64 runner
-          - os: ubuntu-22.04-arm64
+          # Linux ARM64 (musl) - QEMU emulation
+          - os: ubuntu-latest
             arch: aarch64
             target: linux-aarch64-musl
             graal_arch: aarch64
             use_musl: true
+            use_qemu: true
           # Windows x86_64
           - os: windows-latest
             arch: x86_64
