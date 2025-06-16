@@ -52,7 +52,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3  # v3 for compatibility with Ubuntu 18.04
       with:
         fetch-depth: 0
 
@@ -194,7 +194,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3  # v3 for compatibility with Ubuntu 18.04
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
