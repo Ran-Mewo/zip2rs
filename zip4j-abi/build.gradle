@@ -26,18 +26,6 @@ graalvmNative {
                     '-march=compatibility',
                     '-O9'
             ])
-
-            // Add musl support for ARM64 when running on ARM64 with musl environment
-            def arch = System.getProperty("os.arch")
-            if (System.getenv('USE_MUSL') == 'true') {
-                println "Configuring for ARM64 musl compilation"
-                buildArgs.addAll([
-                    '--libc=musl',
-                    '--static'
-                ])
-            }
-
-
         }
         test {
             buildArgs.addAll([
