@@ -24,7 +24,11 @@ graalvmNative {
                     '-H:Name=zip4j-abi',
                     '--no-fallback',
                     '-O9',
-                    '-march=compatibility'
+                    '-march=compatibility',
+                    '-H:+StaticExecutableWithDynamicLibC',  // Enable static linking of system libraries
+                    '-H:NativeLinkerOption=-Wl,-Bstatic',   // Force static linking for following libs
+                    '-H:NativeLinkerOption=-lz',            // Link zlib statically
+                    '-H:NativeLinkerOption=-Wl,-Bdynamic'   // Return to dynamic linking for system libs
             ])
         }
         test {

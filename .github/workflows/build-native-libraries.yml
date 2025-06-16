@@ -74,14 +74,14 @@ jobs:
       if: matrix.use_musl == true
       run: |
         sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev zlib1g-dev build-essential
+        sudo apt-get install -y musl-tools musl-dev zlib1g-dev libz-dev build-essential
         echo "USE_MUSL=true" >> $GITHUB_ENV
 
-    - name: Install development libraries (ARM64 Linux)
-      if: matrix.target == 'linux-aarch64'
+    - name: Install development libraries (Linux)
+      if: startsWith(matrix.target, 'linux')
       run: |
         sudo apt-get update
-        sudo apt-get install -y zlib1g-dev build-essential
+        sudo apt-get install -y zlib1g-dev libz-dev build-essential
 
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
