@@ -24,6 +24,8 @@ graalvmNative {
                     '-H:+UnlockExperimentalVMOptions',
                     '-H:Name=zip4j-abi',
                     '-H:+StaticExecutableWithDynamicLibC',
+                    '-H:+TrackPrimitiveValues',
+                    '-H:+UsePredicates',
 //                    '--features=io.github.ran.zip4j_abi.StaticLibrary',
                     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
                     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
@@ -34,8 +36,8 @@ graalvmNative {
                     '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
                     '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
                     '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
-                    '-O9',
-                    '-march=compatibility'
+                    '-Os',
+                    '-march=compatibility',
             ])
             jvmArgs.addAll([
                     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
