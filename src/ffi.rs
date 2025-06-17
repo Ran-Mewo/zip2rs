@@ -6,6 +6,10 @@ use crate::error::{Result, ZipError};
 // Include the generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+// Import embedded module when bundled feature is enabled
+#[cfg(feature = "bundled")]
+use crate::embedded;
+
 // Re-export commonly used types for convenience
 pub use graal_isolatethread_t as GraalIsolateThread;
 pub use graal_isolate_t as GraalIsolate;
@@ -20,6 +24,14 @@ pub fn init() -> Result<()> {
     let mut init_result = Ok(());
 
     INIT_ONCE.call_once(|| {
+        // Initialize embedded library if bundled feature is enabled
+        #[cfg(feature = "bundled")]
+        {
+            if let Err(e) = embedded::initialize() {
+                init_result = Err(ZipError::Unknown(format!("Failed to initialize embedded library: {}", e)));
+                return;
+            }
+        }
         unsafe {
             let mut isolate: *mut GraalIsolate = std::ptr::null_mut();
             let mut thread: *mut GraalIsolateThread = std::ptr::null_mut();

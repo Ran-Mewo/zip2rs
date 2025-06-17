@@ -88,6 +88,9 @@ pub mod types;
 pub mod zip_entry;
 pub mod zip_file;
 
+#[cfg(feature = "bundled")]
+mod embedded;
+
 // Re-export main types for convenience
 pub use error::{Result, ZipError};
 pub use types::{

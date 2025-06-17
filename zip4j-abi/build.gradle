@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     implementation 'net.lingala.zip4j:zip4j:2.11.5'
+//    compileOnly 'org.graalvm.nativeimage:svm:24.0.1'
 }
 
 graalvmNative {
@@ -22,26 +23,55 @@ graalvmNative {
             buildArgs.addAll([
                     '-H:+UnlockExperimentalVMOptions',
                     '-H:Name=zip4j-abi',
-                    '--no-fallback',
+                    '-H:+StaticExecutableWithDynamicLibC',
+//                    '--features=io.github.ran.zip4j_abi.StaticLibrary',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
                     '-O9',
                     '-march=compatibility'
+            ])
+            jvmArgs.addAll([
+                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED',
+                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
+                    '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED'
             ])
 
             // Add platform-specific static linking for zlib
             if (System.getProperty("os.name").toLowerCase().contains("linux")) {
                 // Linux: Use -Bstatic/-Bdynamic for selective static linking
                 buildArgs.addAll([
-                    '-H:+StaticExecutableWithDynamicLibC',  // Enable static linking of system libraries
-                    '-H:NativeLinkerOption=-Wl,-Bstatic',   // Force static linking for following libs
-                    '-H:NativeLinkerOption=-lz',            // Link zlib statically
-                    '-H:NativeLinkerOption=-Wl,-Bdynamic'   // Return to dynamic linking for system libs
+                        '-H:NativeLinkerOption=-Wl,-Bstatic',   // Force static linking for following libs
+                        '-H:NativeLinkerOption=-lz',            // Link zlib statically
+                        '-H:NativeLinkerOption=-Wl,-Bdynamic'   // Return to dynamic linking for system libs
                 ])
             }
         }
         test {
             buildArgs.addAll([
                     '-H:+UnlockExperimentalVMOptions',
-                    '--no-fallback',
+//                    '--features=io.github.ran.zip4j_abi.StaticLibrary',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED',
+                    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.meta=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.hosted.analysis=ALL-UNNAMED',
+                    '-J--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.c.libc=ALL-UNNAMED',
                     '-Ob',
                     '-H:+ReportExceptionStackTraces'
             ])

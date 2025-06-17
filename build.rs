@@ -1,7 +1,10 @@
 use std::env;
 use std::path::PathBuf;
+use std::fs;
 
 fn main() {
+    // Check if bundled feature is enabled
+    let bundled = env::var("CARGO_FEATURE_BUNDLED").is_ok();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
@@ -55,6 +58,11 @@ fn main() {
     // Find and use header file for bindings
     let header_path = find_header_file(&lib_dir, &manifest_dir);
     generate_bindings(&header_path);
+
+    // Generate embedded libraries if bundled feature is enabled
+    if bundled {
+        generate_embedded_libraries(&manifest_dir);
+    }
 
     // Tell cargo to rerun this build script if files change
     println!("cargo:rerun-if-changed=zip4j-abi/build/native/nativeCompile/");
@@ -261,4 +269,61 @@ fn generate_bindings(header_path: &PathBuf) {
         .expect("Couldn't write bindings!");
 
     println!("cargo:warning=Generated bindings at {}", out_dir.join("bindings.rs").display());
+}
+
+fn generate_embedded_libraries(manifest_dir: &str) {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let native_dir = PathBuf::from(manifest_dir).join("zip4j-abi").join("build").join("native").join("nativeCompile");
+
+    // Platform-specific library mappings
+    let platforms = vec![
+        ("windows-x86_64", "zip4j-abi.dll"),
+        ("linux-x86_64", "libzip4j-abi.so"),
+        ("linux-x86_64-musl", "libzip4j-abi.so"),
+        ("linux-aarch64", "libzip4j-abi.so"),
+        ("darwin-x86_64", "libzip4j-abi.dylib"),
+        ("darwin-aarch64", "libzip4j-abi.dylib"),
+    ];
+
+    let mut embedded_code = String::new();
+    embedded_code.push_str("// Auto-generated embedded libraries\n");
+    embedded_code.push_str("use std::collections::HashMap;\n\n");
+    embedded_code.push_str("pub struct EmbeddedLibrary {\n");
+    embedded_code.push_str("    pub data: &'static [u8],\n");
+    embedded_code.push_str("    pub filename: &'static str,\n");
+    embedded_code.push_str("}\n\n");
+    embedded_code.push_str("pub fn get_embedded_libraries() -> HashMap<&'static str, EmbeddedLibrary> {\n");
+    embedded_code.push_str("    let mut libs = HashMap::new();\n\n");
+
+    for (platform, filename) in platforms {
+        let lib_path = native_dir.join(platform).join(filename);
+        if lib_path.exists() {
+            embedded_code.push_str(&format!(
+                "    libs.insert(\"{}\", EmbeddedLibrary {{\n",
+                platform
+            ));
+            embedded_code.push_str(&format!(
+                "        data: include_bytes!(\"{}\"),\n",
+                lib_path.to_string_lossy().replace("\\", "/")
+            ));
+            embedded_code.push_str(&format!(
+                "        filename: \"{}\",\n",
+                filename
+            ));
+            embedded_code.push_str("    });\n\n");
+
+            println!("cargo:warning=Embedding library for {}: {}", platform, lib_path.display());
+        } else {
+            println!("cargo:warning=Library not found for {}: {}", platform, lib_path.display());
+        }
+    }
+
+    embedded_code.push_str("    libs\n");
+    embedded_code.push_str("}\n");
+
+    // Write the embedded libraries code
+    let embedded_file = out_dir.join("embedded_libs.rs");
+    fs::write(&embedded_file, embedded_code).expect("Failed to write embedded libraries");
+
+    println!("cargo:warning=Generated embedded libraries at {}", embedded_file.display());
 }
