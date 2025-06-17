@@ -21,17 +21,15 @@ static INIT_ONCE: Once = Once::new();
 
 /// Initialize the zip4j library with proper GraalVM isolate setup
 pub fn init() -> Result<()> {
+    // Ensure embedded library is initialized first
+    #[cfg(feature = "bundled")]
+    {
+        embedded::ensure_initialized()?;
+    }
+
     let mut init_result = Ok(());
 
     INIT_ONCE.call_once(|| {
-        // Initialize embedded library if bundled feature is enabled
-        #[cfg(feature = "bundled")]
-        {
-            if let Err(e) = embedded::initialize() {
-                init_result = Err(ZipError::Unknown(format!("Failed to initialize embedded library: {}", e)));
-                return;
-            }
-        }
         unsafe {
             let mut isolate: *mut GraalIsolate = std::ptr::null_mut();
             let mut thread: *mut GraalIsolateThread = std::ptr::null_mut();
@@ -104,10 +102,10 @@ pub fn is_initialized() -> bool {
     unsafe { !GRAAL_THREAD.is_null() }
 }
 
-/// Ensure the library is initialized, returning an error if not
+/// Ensure the library is initialized, initializing it automatically if needed
 pub(crate) fn ensure_initialized() -> Result<()> {
     if !is_initialized() {
-        return Err(ZipError::Unknown("Library not initialized. Call zip2rs::init() first.".to_string()));
+        init()?;
     }
     Ok(())
 }
