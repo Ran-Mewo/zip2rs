@@ -23,6 +23,7 @@ static LIBRARY_LOADER: Lazy<LibraryLoader> = Lazy::new(|| {
 struct LibraryLoader {
     _temp_dir: Option<TempDir>,
     _library_path: std::path::PathBuf,
+    library: Library,
 }
 
 #[cfg(feature = "bundled")]
@@ -92,14 +93,22 @@ impl LibraryLoader {
             (temp_lib_path, Some(temp_dir))
         };
 
+        // Load the library
+        let library = unsafe { Library::new(&final_lib_path)? };
+
         Ok(LibraryLoader {
             _temp_dir: temp_dir,
             _library_path: final_lib_path,
+            library,
         })
     }
     
     fn library_path(&self) -> &std::path::Path {
         &self._library_path
+    }
+
+    fn get_symbol<T>(&self, symbol: &[u8]) -> Result<libloading::Symbol<T>, libloading::Error> {
+        unsafe { self.library.get(symbol) }
     }
 }
 
@@ -145,6 +154,12 @@ pub fn initialize() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(feature = "bundled")]
 pub fn ensure_initialized() -> crate::error::Result<()> {
     initialize().map_err(|e| crate::error::ZipError::Unknown(format!("Failed to initialize embedded library: {}", e)))
+}
+
+/// Get a function pointer from the embedded library
+#[cfg(feature = "bundled")]
+pub fn get_function<T>(symbol: &[u8]) -> Result<libloading::Symbol<T>, Box<dyn std::error::Error>> {
+    Ok(LIBRARY_LOADER.get_symbol(symbol)?)
 }
 
 // Stub implementations for when bundled feature is not enabled

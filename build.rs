@@ -49,15 +49,23 @@ fn main() {
         panic!("Native library not found for platform {}. Please build it first or check the zip4j-abi/build/native/nativeCompile/ directory.", platform_dir);
     });
 
-    // Set up linking based on target OS
-    setup_linking(&lib_dir, &target_os);
+    // Only set up linking if bundled feature is NOT enabled
+    // When bundled is enabled, we use embedded libraries with dynamic loading instead
+    if !bundled {
+        // Set up linking based on target OS
+        setup_linking(&lib_dir, &target_os);
 
-    // Copy libraries to target directory for runtime
-    copy_runtime_libraries(&lib_dir, &target_os);
+        // Copy libraries to target directory for runtime
+        copy_runtime_libraries(&lib_dir, &target_os);
+    } else {
+        // When bundled is enabled, we don't link to the library at all
+        // The dynamic loading will handle all function calls
+        println!("cargo:warning=Bundled mode enabled - skipping dynamic library linking");
+    }
 
     // Find and use header file for bindings
     let header_path = find_header_file(&lib_dir, &manifest_dir);
-    generate_bindings(&header_path);
+    generate_bindings(&header_path, bundled);
 
     // Generate embedded libraries if bundled feature is enabled
     if bundled {
@@ -251,7 +259,7 @@ fn find_header_file(lib_dir: &PathBuf, manifest_dir: &str) -> PathBuf {
     fallback_header
 }
 
-fn generate_bindings(header_path: &PathBuf) {
+fn generate_bindings(header_path: &PathBuf, bundled: bool) {
     let header_dir = header_path.parent().unwrap();
 
     let bindings = bindgen::Builder::default()
@@ -264,11 +272,184 @@ fn generate_bindings(header_path: &PathBuf) {
         .expect("Unable to generate bindings");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_dir.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
 
-    println!("cargo:warning=Generated bindings at {}", out_dir.join("bindings.rs").display());
+    if bundled {
+        // Generate dynamic loading wrappers for bundled mode
+        let bindings_str = bindings.to_string();
+        let dynamic_bindings = generate_dynamic_bindings(&bindings_str);
+        fs::write(out_dir.join("bindings.rs"), dynamic_bindings)
+            .expect("Couldn't write dynamic bindings!");
+        println!("cargo:warning=Generated dynamic bindings for bundled mode at {}", out_dir.join("bindings.rs").display());
+    } else {
+        bindings
+            .write_to_file(out_dir.join("bindings.rs"))
+            .expect("Couldn't write bindings!");
+        println!("cargo:warning=Generated bindings at {}", out_dir.join("bindings.rs").display());
+    }
+}
+
+fn generate_dynamic_bindings(bindings_str: &str) -> String {
+    let mut result = String::new();
+
+    // Add necessary imports (but avoid conflicts)
+    result.push_str("// Auto-generated dynamic bindings for bundled mode\n");
+    result.push_str("#[cfg(feature = \"bundled\")]\n");
+    result.push_str("use crate::embedded;\n\n");
+
+    let mut in_extern_block = false;
+    let mut current_function = String::new();
+
+    // Parse the bindings to extract function signatures
+    for line in bindings_str.lines() {
+        // Skip the imports to avoid conflicts
+        if line.trim().starts_with("use std::os::raw::") {
+            continue;
+        }
+
+        if line.trim().starts_with("extern \"C\" {") {
+            in_extern_block = true;
+            current_function.clear();
+            continue;
+        }
+
+        if in_extern_block && line.trim() == "}" {
+            in_extern_block = false;
+            // Generate dynamic wrapper for the current function
+            if !current_function.is_empty() {
+                let wrapper = generate_dynamic_wrapper(&current_function);
+                if !wrapper.is_empty() {
+                    result.push_str(&wrapper);
+                    result.push('\n');
+                }
+            }
+            current_function.clear();
+            continue;
+        }
+
+        if in_extern_block {
+            // Collect all lines of the function signature
+            current_function.push_str(line.trim());
+            if !line.trim().ends_with(';') {
+                current_function.push(' ');
+            }
+            continue;
+        }
+
+        if !in_extern_block {
+            // Keep non-function declarations (types, constants, etc.)
+            result.push_str(line);
+            result.push('\n');
+        }
+    }
+
+    result
+}
+
+fn generate_dynamic_wrapper(func_signature: &str) -> String {
+    // Parse function signature: "pub fn name(args...) -> return_type;"
+    let func_signature = func_signature.trim_end_matches(';');
+
+    // Extract function name
+    let fn_start = match func_signature.find("pub fn ") {
+        Some(pos) => pos + 7,
+        None => {
+            eprintln!("Warning: Invalid function signature (no 'pub fn'): {}", func_signature);
+            return String::new();
+        }
+    };
+
+    let fn_name_end = match func_signature[fn_start..].find('(') {
+        Some(pos) => pos,
+        None => {
+            eprintln!("Warning: Invalid function signature (no opening paren): {}", func_signature);
+            return String::new();
+        }
+    };
+    let fn_name = &func_signature[fn_start..fn_start + fn_name_end];
+
+    // Extract parameters
+    let params_start = match func_signature.find('(') {
+        Some(pos) => pos + 1,
+        None => {
+            eprintln!("Warning: Invalid function signature (no opening paren): {}", func_signature);
+            return String::new();
+        }
+    };
+
+    let params_end = match func_signature.rfind(')') {
+        Some(pos) => pos,
+        None => {
+            eprintln!("Warning: Invalid function signature (no closing paren): {}", func_signature);
+            return String::new();
+        }
+    };
+    let params_str = &func_signature[params_start..params_end];
+
+    // Extract return type
+    let return_type = if let Some(arrow_pos) = func_signature.find(" -> ") {
+        &func_signature[arrow_pos + 4..]
+    } else {
+        "()"
+    };
+
+    // Generate parameter names and types
+    let mut param_names = Vec::new();
+    let mut param_types = Vec::new();
+
+    if !params_str.trim().is_empty() {
+        for param in params_str.split(',') {
+            let param = param.trim();
+            if let Some(colon_pos) = param.find(':') {
+                let name = param[..colon_pos].trim();
+                let type_str = param[colon_pos + 1..].trim();
+                param_names.push(name.to_string());
+                param_types.push(type_str.to_string());
+            }
+        }
+    }
+
+    // Generate the dynamic wrapper
+    let mut wrapper = String::new();
+    wrapper.push_str("#[cfg(feature = \"bundled\")]\n");
+    wrapper.push_str(&format!("pub unsafe fn {}(", fn_name));
+
+    // Add parameters
+    for (i, (name, type_str)) in param_names.iter().zip(param_types.iter()).enumerate() {
+        if i > 0 {
+            wrapper.push_str(", ");
+        }
+        wrapper.push_str(&format!("{}: {}", name, type_str));
+    }
+
+    wrapper.push_str(&format!(") -> {} {{\n", return_type));
+
+    // Generate function signature for dynamic loading
+    let mut fn_sig = format!("unsafe extern \"C\" fn(");
+    for (i, type_str) in param_types.iter().enumerate() {
+        if i > 0 {
+            fn_sig.push_str(", ");
+        }
+        fn_sig.push_str(type_str);
+    }
+    fn_sig.push_str(&format!(") -> {}", return_type));
+
+    // Generate the dynamic loading call
+    wrapper.push_str(&format!("    let func = embedded::get_function::<{}>(\n", fn_sig));
+    wrapper.push_str(&format!("        b\"{}\"\n", fn_name));
+    wrapper.push_str(&format!("    ).expect(\"Failed to load function {}\");\n", fn_name));
+    wrapper.push_str("    func(");
+
+    // Add parameter names to the call
+    for (i, name) in param_names.iter().enumerate() {
+        if i > 0 {
+            wrapper.push_str(", ");
+        }
+        wrapper.push_str(name);
+    }
+
+    wrapper.push_str(")\n}");
+
+    wrapper
 }
 
 fn generate_embedded_libraries(manifest_dir: &str) {

@@ -3,12 +3,8 @@ use std::os::raw::{c_char, c_int, c_longlong};
 use std::sync::Once;
 use crate::error::{Result, ZipError};
 
-// Include the generated bindings
+// Include the generated bindings (either static or dynamic based on bundled feature)
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-// Import embedded module when bundled feature is enabled
-#[cfg(feature = "bundled")]
-use crate::embedded;
 
 // Re-export commonly used types for convenience
 pub use graal_isolatethread_t as GraalIsolateThread;
