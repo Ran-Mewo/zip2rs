@@ -21,7 +21,7 @@ static LIBRARY_LOADER: Lazy<LibraryLoader> = Lazy::new(|| {
 
 #[cfg(feature = "bundled")]
 struct LibraryLoader {
-    _temp_dir: Option<TempDir>,
+    _temp_dir: TempDir,
     _library_path: std::path::PathBuf,
     library: Library,
 }
@@ -35,70 +35,57 @@ impl LibraryLoader {
         let embedded_lib = embedded_libs.get(platform)
             .ok_or_else(|| format!("No embedded library found for platform: {}", platform))?;
 
-        // Try to extract to the same directory as the executable first
-        let exe_path = std::env::current_exe()?;
-        let exe_dir = exe_path.parent().ok_or("Failed to get executable directory")?;
-        let lib_path = exe_dir.join(embedded_lib.filename);
+        // Always extract to a temporary directory for clean isolation
+        let temp_dir = tempfile::tempdir()?;
+        let lib_path = temp_dir.path().join(embedded_lib.filename);
+        std::fs::write(&lib_path, embedded_lib.data)?;
 
-        // Try to write to exe directory, fall back to temp if that fails
-        let (final_lib_path, temp_dir) = if std::fs::write(&lib_path, embedded_lib.data).is_ok() {
-            // Successfully wrote to exe directory, no temp dir needed
-            (lib_path, None)
-        } else {
-            // Fall back to temp directory and update PATH/LD_LIBRARY_PATH
-            let temp_dir = tempfile::tempdir()?;
-            let temp_lib_path = temp_dir.path().join(embedded_lib.filename);
-            std::fs::write(&temp_lib_path, embedded_lib.data)?;
+        // Set up environment so the dynamic linker can find the library
+        #[cfg(target_os = "windows")]
+        {
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            let temp_dir_str = temp_dir.path().to_string_lossy();
+            let new_path = if current_path.is_empty() {
+                temp_dir_str.to_string()
+            } else {
+                format!("{};{}", temp_dir_str, current_path)
+            };
+            std::env::set_var("PATH", new_path);
+        }
 
-            // Set up environment so the dynamic linker can find the library
-            #[cfg(target_os = "windows")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let temp_dir_str = temp_dir.path().to_string_lossy();
+
+            #[cfg(target_os = "linux")]
             {
-                let current_path = std::env::var("PATH").unwrap_or_default();
-                let temp_dir_str = temp_dir.path().to_string_lossy();
+                let current_path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
                 let new_path = if current_path.is_empty() {
                     temp_dir_str.to_string()
                 } else {
-                    format!("{};{}", temp_dir_str, current_path)
+                    format!("{}:{}", temp_dir_str, current_path)
                 };
-                std::env::set_var("PATH", new_path);
+                std::env::set_var("LD_LIBRARY_PATH", new_path);
             }
 
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(target_os = "macos")]
             {
-                let temp_dir_str = temp_dir.path().to_string_lossy();
-
-                #[cfg(target_os = "linux")]
-                {
-                    let current_path = std::env::var("LD_LIBRARY_PATH").unwrap_or_default();
-                    let new_path = if current_path.is_empty() {
-                        temp_dir_str.to_string()
-                    } else {
-                        format!("{}:{}", temp_dir_str, current_path)
-                    };
-                    std::env::set_var("LD_LIBRARY_PATH", new_path);
-                }
-
-                #[cfg(target_os = "macos")]
-                {
-                    let current_path = std::env::var("DYLD_LIBRARY_PATH").unwrap_or_default();
-                    let new_path = if current_path.is_empty() {
-                        temp_dir_str.to_string()
-                    } else {
-                        format!("{}:{}", temp_dir_str, current_path)
-                    };
-                    std::env::set_var("DYLD_LIBRARY_PATH", new_path);
-                }
+                let current_path = std::env::var("DYLD_LIBRARY_PATH").unwrap_or_default();
+                let new_path = if current_path.is_empty() {
+                    temp_dir_str.to_string()
+                } else {
+                    format!("{}:{}", temp_dir_str, current_path)
+                };
+                std::env::set_var("DYLD_LIBRARY_PATH", new_path);
             }
-
-            (temp_lib_path, Some(temp_dir))
-        };
+        }
 
         // Load the library
-        let library = unsafe { Library::new(&final_lib_path)? };
+        let library = unsafe { Library::new(&lib_path)? };
 
         Ok(LibraryLoader {
             _temp_dir: temp_dir,
-            _library_path: final_lib_path,
+            _library_path: lib_path,
             library,
         })
     }
