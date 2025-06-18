@@ -452,15 +452,6 @@ fn generate_dynamic_wrapper(func_signature: &str) -> String {
     wrapper
 }
 
-fn compress_library_data(data: &[u8]) -> Vec<u8> {
-    use std::io::Cursor;
-
-    let mut compressed = Vec::new();
-    let mut input = Cursor::new(data);
-    lzma_rs::lzma_compress(&mut input, &mut compressed).expect("Failed to compress library data");
-    compressed
-}
-
 fn generate_embedded_libraries(manifest_dir: &str) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let native_dir = PathBuf::from(manifest_dir).join("zip4j-abi").join("build").join("native").join("nativeCompile");
@@ -481,8 +472,6 @@ fn generate_embedded_libraries(manifest_dir: &str) {
     embedded_code.push_str("pub struct EmbeddedLibrary {\n");
     embedded_code.push_str("    pub data: &'static [u8],\n");
     embedded_code.push_str("    pub filename: &'static str,\n");
-    embedded_code.push_str("    pub compressed: bool,\n");
-    embedded_code.push_str("    pub original_size: usize,\n");
     embedded_code.push_str("}\n\n");
     embedded_code.push_str("pub fn get_embedded_libraries() -> HashMap<&'static str, EmbeddedLibrary> {\n");
     embedded_code.push_str("    let mut libs = HashMap::new();\n\n");
@@ -490,40 +479,21 @@ fn generate_embedded_libraries(manifest_dir: &str) {
     for (platform, filename) in platforms {
         let lib_path = native_dir.join(platform).join(filename);
         if lib_path.exists() {
-            // Read the original library file
-            let original_data = fs::read(&lib_path).expect("Failed to read library file");
-            let original_size = original_data.len();
-
-            // Compress the library data with LZMA
-            let compressed_data = compress_library_data(&original_data);
-            let compressed_size = compressed_data.len();
-
-            // Write compressed data to a temporary file for embedding
-            let compressed_path = out_dir.join(format!("{}-{}.lzma", platform, filename));
-            fs::write(&compressed_path, &compressed_data).expect("Failed to write compressed library");
-
             embedded_code.push_str(&format!(
                 "    libs.insert(\"{}\", EmbeddedLibrary {{\n",
                 platform
             ));
             embedded_code.push_str(&format!(
                 "        data: include_bytes!(\"{}\"),\n",
-                compressed_path.to_string_lossy().replace("\\", "/")
+                lib_path.to_string_lossy().replace("\\", "/")
             ));
             embedded_code.push_str(&format!(
                 "        filename: \"{}\",\n",
                 filename
             ));
-            embedded_code.push_str("        compressed: true,\n");
-            embedded_code.push_str(&format!(
-                "        original_size: {},\n",
-                original_size
-            ));
             embedded_code.push_str("    });\n\n");
 
-            println!("cargo:warning=Embedding compressed library for {}: {} ({} -> {} bytes, {:.1}% reduction)",
-                platform, lib_path.display(), original_size, compressed_size,
-                (1.0 - compressed_size as f64 / original_size as f64) * 100.0);
+            println!("cargo:warning=Embedding library for {}: {}", platform, lib_path.display());
         } else {
             println!("cargo:warning=Library not found for {}: {}", platform, lib_path.display());
         }

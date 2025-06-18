@@ -1,5 +1,5 @@
 //! Embedded library loading for bundled mode
-//! 
+//!
 //! This module handles extracting and loading native libraries that are embedded
 //! directly into the Rust binary when the "bundled" feature is enabled.
 
@@ -13,16 +13,6 @@ use tempfile::TempDir;
 
 #[cfg(feature = "bundled")]
 include!(concat!(env!("OUT_DIR"), "/embedded_libs.rs"));
-
-#[cfg(feature = "bundled")]
-fn decompress_library_data(compressed_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use std::io::Cursor;
-
-    let mut decompressed = Vec::new();
-    let mut input = Cursor::new(compressed_data);
-    lzma_rs::lzma_decompress(&mut input, &mut decompressed)?;
-    Ok(decompressed)
-}
 
 #[cfg(feature = "bundled")]
 static LIBRARY_LOADER: Lazy<LibraryLoader> = Lazy::new(|| {
@@ -48,15 +38,7 @@ impl LibraryLoader {
         // Always extract to a temporary directory for clean isolation
         let temp_dir = tempfile::tempdir()?;
         let lib_path = temp_dir.path().join(embedded_lib.filename);
-
-        // Decompress the library data if it's compressed
-        let library_data = if embedded_lib.compressed {
-            decompress_library_data(embedded_lib.data)?
-        } else {
-            embedded_lib.data.to_vec()
-        };
-
-        std::fs::write(&lib_path, &library_data)?;
+        std::fs::write(&lib_path, embedded_lib.data)?;
 
         // Set up environment so the dynamic linker can find the library
         #[cfg(target_os = "windows")]
@@ -107,7 +89,7 @@ impl LibraryLoader {
             library,
         })
     }
-    
+
     fn library_path(&self) -> &std::path::Path {
         &self._library_path
     }
@@ -121,22 +103,22 @@ impl LibraryLoader {
 fn get_current_platform() -> &'static str {
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     return "windows-x86_64";
-    
+
     #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
     return "linux-x86_64";
-    
+
     #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "musl"))]
     return "linux-x86_64-musl";
-    
+
     #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
     return "linux-aarch64";
-    
+
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     return "darwin-x86_64";
-    
+
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     return "darwin-aarch64";
-    
+
     // Fallback - this will cause an error at runtime if the platform isn't supported
     "unknown"
 }
