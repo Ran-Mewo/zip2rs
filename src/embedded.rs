@@ -15,6 +15,16 @@ use tempfile::TempDir;
 include!(concat!(env!("OUT_DIR"), "/embedded_libs.rs"));
 
 #[cfg(feature = "bundled")]
+fn decompress_library_data(compressed_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use std::io::Cursor;
+
+    let mut decompressed = Vec::new();
+    let mut input = Cursor::new(compressed_data);
+    lzma_rs::lzma_decompress(&mut input, &mut decompressed)?;
+    Ok(decompressed)
+}
+
+#[cfg(feature = "bundled")]
 static LIBRARY_LOADER: Lazy<LibraryLoader> = Lazy::new(|| {
     LibraryLoader::new().expect("Failed to initialize embedded library loader")
 });
@@ -38,7 +48,15 @@ impl LibraryLoader {
         // Always extract to a temporary directory for clean isolation
         let temp_dir = tempfile::tempdir()?;
         let lib_path = temp_dir.path().join(embedded_lib.filename);
-        std::fs::write(&lib_path, embedded_lib.data)?;
+
+        // Decompress the library data if it's compressed
+        let library_data = if embedded_lib.compressed {
+            decompress_library_data(embedded_lib.data)?
+        } else {
+            embedded_lib.data.to_vec()
+        };
+
+        std::fs::write(&lib_path, &library_data)?;
 
         // Set up environment so the dynamic linker can find the library
         #[cfg(target_os = "windows")]

@@ -10,16 +10,18 @@ categories = ["compression", "filesystem"]
 
 [features]
 default = []
-bundled = ["libloading", "tempfile", "once_cell"]
+bundled = ["libloading", "tempfile", "once_cell", "lzma-rs"]
 
 [dependencies]
 libloading = { version = "0.8", optional = true }
 tempfile = { version = "3.0", optional = true }
 once_cell = { version = "1.0", optional = true }
+lzma-rs = { version = "0.3", optional = true }
 #thiserror = "2.0"
 
 [build-dependencies]
 bindgen = "0.70"
+lzma-rs = "0.3"
 
 [dev-dependencies]
 
